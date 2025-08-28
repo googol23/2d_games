@@ -2,103 +2,85 @@ import pygame
 import random
 from src.map_data import Terrain, Resource, generate_terrain_map, place_resources
 from src.character import RandomCharacter
+from src.spawn import find_spawn_point
+from src.render_map import render_map
 
 # --- Pygame setup ---
 pygame.init()
-WIDTH, HEIGHT = 640, 480
-TILE_SIZE = 32
-GRID_WIDTH, GRID_HEIGHT = WIDTH//TILE_SIZE, HEIGHT//TILE_SIZE
-screen = pygame.display.set_mode((WIDTH, HEIGHT))
+MAP_WIDTH, MAP_HEIGHT = 100, 100  # map in tiles
+WINDOW_WIDTH, WINDOW_HEIGHT = 1024, 780  # screen size in pixels
+screen = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
 clock = pygame.time.Clock()
 
-# --- Define terrains and resources ---
-wood = Resource("wood",(139,69,19))
-stone = Resource("stone",(160,160,160))
-food = Resource("food",(255,255,0))
+# --- Camera ---
+camera_x, camera_y = 0, 0
+CAMERA_SPEED = 300
+MIN_TILE_SIZE, MAX_TILE_SIZE = 1, 64
 
-grass = Terrain("grass",(0,200,0),[wood,food])
-water = Terrain("water",(0,0,200),[])
-mountain = Terrain("mountain",(100,100,100),[stone])
+# --- Terrains and resources ---
+wood = Resource("wood", (139,69,19))
+stone = Resource("stone", (160,160,160))
+food = Resource("food", (255,255,0))
 
-terrains = {"grass":grass,"water":water,"mountain":mountain}
+terrains = {
+    "water": Terrain("water", color=(0,0,255)),
+    "grass": Terrain("grass", color=(0,255,0), resources=[wood,food]),
+    "forest": Terrain("forest", color=(34,139,34), resources=[wood,food]),
+    "mountain": Terrain("mountain", color=(139,137,137), resources=[stone])
+}
+
+fractions = {
+    "water": 0.2,
+    "grass": 0.4,
+    "forest": 0.3,
+    "mountain": 0.1
+}
 
 # --- Generate map ---
-map_grid = generate_terrain_map(GRID_WIDTH, GRID_HEIGHT, scale=0.1, terrains=terrains)
-map_grid = place_resources(map_grid, num_resources=60)
+map_grid = generate_terrain_map(MAP_WIDTH, MAP_HEIGHT, terrains=terrains, terrain_fractions=fractions, seed=42)
+map_grid = place_resources(map_grid, num_resources=100)  # large map
 
-def find_spawn_point(character, grid, min_neighbors=4):
-    """
-    Find a spawn point for the given character on the map.
-
-    character: Character object (used for blocked_terrains)
-    grid: 2D list of Tile objects
-    min_neighbors: minimum number of allowed neighbors around spawn tile
-    Returns: (px, py) pixel coordinates
-    """
-    height = len(grid)
-    width = len(grid[0])
-    candidates = []
-
-    for y in range(height):
-        for x in range(width):
-            tile = grid[y][x]
-            # Tile must be allowed for this character and have no resource
-            if tile.terrain.name in character.blocked_terrains or tile.resource is not None:
-                continue
-
-            # Count valid neighbors
-            valid_neighbors = 0
-            for dx, dy in [(-1,0),(1,0),(0,-1),(0,1)]:
-                nx, ny = x + dx, y + dy
-                if 0 <= nx < width and 0 <= ny < height:
-                    n_tile = grid[ny][nx]
-                    if n_tile.terrain.name not in character.blocked_terrains and n_tile.resource is None:
-                        valid_neighbors += 1
-
-            if valid_neighbors >= min_neighbors:
-                candidates.append((x, y))
-
-    if not candidates:
-        raise ValueError("No suitable spawn point found")
-
-    gx, gy = random.choice(candidates)
-    px = gx * TILE_SIZE + TILE_SIZE / 2
-    py = gy * TILE_SIZE + TILE_SIZE / 2
-    return px, py
-
-# --- Create characters ---
-walker = RandomCharacter(WIDTH//2, HEIGHT//2, speed=120, blocked_terrains=["water","mountain"])
+# --- Characters ---
+walker = RandomCharacter(speed=5, blocked_terrains=["water","mountain"])
 walker.x, walker.y = find_spawn_point(walker, map_grid)
-flyer  = RandomCharacter(WIDTH//4, HEIGHT//4, speed=150, blocked_terrains=["mountain"])
+flyer  = RandomCharacter(speed=8, blocked_terrains=["mountain"])
 flyer.x, flyer.y = find_spawn_point(flyer, map_grid)
 characters = [walker, flyer]
 
+
 # --- Main loop ---
 running = True
+TILE_SIZE = MIN_TILE_SIZE
 while running:
     dt = clock.tick(60)/1000
+
+    # --- Events ---
     for event in pygame.event.get():
-        if event.type==pygame.QUIT:
-            running=False
+        if event.type == pygame.QUIT:
+            running = False
+        elif event.type == pygame.MOUSEWHEEL:
+            TILE_SIZE += event.y * 2
+            TILE_SIZE = max(MIN_TILE_SIZE, min(MAX_TILE_SIZE, TILE_SIZE))
+
+    # --- Camera control ---
+    keys = pygame.key.get_pressed()
+    if keys[pygame.K_a]: camera_x -= CAMERA_SPEED*dt
+    if keys[pygame.K_d]: camera_x += CAMERA_SPEED*dt
+    if keys[pygame.K_w]: camera_y -= CAMERA_SPEED*dt
+    if keys[pygame.K_s]: camera_y += CAMERA_SPEED*dt
+
+    # Clamp camera
+    max_cam_x = MAP_WIDTH*TILE_SIZE - WINDOW_WIDTH
+    max_cam_y = MAP_HEIGHT*TILE_SIZE - WINDOW_HEIGHT
+    camera_x = max(0, min(max_cam_x, camera_x))
+    camera_y = max(0, min(max_cam_y, camera_y))
 
     # --- Update characters ---
     for c in characters:
-        c.move_randomly(map_grid, dt, TILE_SIZE)
+        c.move_randomly(map_grid, dt)
 
-    # --- Draw ---
-    screen.fill((0,0,0))
-    for y in range(GRID_HEIGHT):
-        for x in range(GRID_WIDTH):
-            tile = map_grid[y][x]
-            pygame.draw.rect(screen, tile.terrain.color,
-                             pygame.Rect(x*TILE_SIZE,y*TILE_SIZE,TILE_SIZE,TILE_SIZE))
-            if tile.resource:
-                pygame.draw.circle(screen, tile.resource.color,
-                                   (x*TILE_SIZE+TILE_SIZE//2, y*TILE_SIZE+TILE_SIZE//2),
-                                   TILE_SIZE//4)
-
-    for c in characters:
-        c.draw(screen)
+    # --- Render map ---
+    TILE_SIZE = render_map(screen, map_grid, characters, camera_x, camera_y, WINDOW_WIDTH, WINDOW_HEIGHT, MIN_TILE_SIZE, MAX_TILE_SIZE)
 
     pygame.display.flip()
 
