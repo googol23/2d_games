@@ -1,0 +1,68 @@
+[
+  {
+    "name": "water_pond",
+    "resources": ["fish", "clay"],
+    "vegetation": ["algae"],
+    "color": [100, 180, 255]
+  },
+  {
+    "name": "water_lake",
+    "resources": ["fish", "clay"],
+    "vegetation": ["algae"],
+    "color": [0, 160, 220]
+  },
+  {
+    "name": "water_river",
+    "resources": ["fish", "stone"],
+    "vegetation": ["algae"],
+    "color": [0, 120, 200]
+  },
+  {
+    "name": "water",
+    "resources": ["fish", "salt"],
+    "vegetation": ["seaweed"],
+    "color": [0, 70, 150]
+  },
+  {
+    "name": "mountain",
+    "resources": ["Silicon", "Aluminium", "Iron", "Titanium", "Magnesium", "Calcium", "Copper", "Zinc", "Nickel"],
+    "vegetation": ["pine", "fir", "moss"],
+    "color": [139, 137, 137]
+  },
+  {
+    "name": "forest",
+    "resources": ["Calcium", "Potassium", "Magnesium", "Sulfur", "Phosphorus", "Manganese"],
+    "vegetation": ["oak", "birch", "maple", "bush"],
+    "color": [34, 139, 34]
+  },
+  {
+    "name": "barren",
+    "resources": ["Silicon", "Aluminium", "Iron", "Titanium", "Calcium", "Magnesium"],
+    "vegetation": [],
+    "color": [210, 180, 140]
+  },
+  {
+    "name": "volcanic",
+    "resources": ["Silicon", "Iron", "Magnesium", "Titanium", "Sulfur", "Chromium", "Nickel"],
+    "vegetation": ["lichen", "moss"],
+    "color": [178, 34, 34]
+  },
+  {
+    "name": "swamp",
+    "resources": ["Calcium", "Sulfur", "Phosphorus", "Manganese", "Potassium"],
+    "vegetation": ["cattail", "reed", "algae"],
+    "color": [47, 79, 47]
+  },
+  {
+    "name": "grassland",
+    "resources": ["Potassium", "Phosphorus", "Calcium", "Magnesium"],
+    "vegetation": ["grass", "wildflower", "shrub"],
+    "color": [124, 252, 0]
+  },
+  {
+    "name": "ice_cap",
+    "resources": ["ice"],
+    "vegetation": [],
+    "color": [255, 255, 255]
+  }
+]

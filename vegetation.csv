@@ -1,0 +1,17 @@
+name,relative_abundance,r,g,b
+vegetation,abundance,r,g,b
+Coniferous trees,15,34,139,34
+Alpine shrubs,5,107,142,35
+Grasses,25,124,252,0
+Deciduous trees,20,60,179,113
+Ferns,8,0,128,0
+Mosses,2,0,100,0
+Sparse grasses,3,144,238,144
+Lichens,1,189,183,107
+Pioneer plants,2,152,251,152
+Reeds,5,102,205,170
+Mangroves,3,0,100,0
+Water lilies,1,32,178,170
+Cacti,4,34,139,34
+Shrubs,6,107,142,35
+Drought-resistant grasses,3,124,252,0

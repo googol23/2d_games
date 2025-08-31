@@ -1,87 +1,293 @@
 import pygame
 import random
-from src.map_data import Terrain, Resource, generate_terrain_map, place_resources
-from src.character import RandomCharacter
-from src.spawn import find_spawn_point
-from src.render_map import render_map
+import time
+import heapq
 
-# --- Pygame setup ---
+import world
+import character
+
+# -----------------------
+# PATHFINDING UTILITIES
+# -----------------------
+def heuristic(a, b):
+    return abs(a[0]-b[0]) + abs(a[1]-b[1])
+
+import heapq
+
+def astar(world, start, goal, forbidden_terrains=None):
+    """
+    A* pathfinding from start to goal.
+    forbidden_terrains: list of terrain types that cannot be crossed at all
+    """
+    neighbors = [(1,0), (-1,0), (0,1), (0,-1), (1,1), (-1,1), (1,-1), (-1,-1)]
+    close_set = set()
+    came_from = {}
+    gscore = {start:0}
+    fscore = {start:abs(start[0]-goal[0]) + abs(start[1]-goal[1])}
+    open_heap = []
+    heapq.heappush(open_heap, (fscore[start], start))
+
+    while open_heap:
+        _, current = heapq.heappop(open_heap)
+
+        if current == goal:
+            # reconstruct path
+            path = []
+            while current in came_from:
+                path.append(current)
+                current = came_from[current]
+            path.reverse()
+            return path
+
+        close_set.add(current)
+
+        for dx, dy in neighbors:
+            neighbor = (current[0]+dx, current[1]+dy)
+            nx, ny = neighbor
+
+            if not (0 <= nx < world.world_size and 0 <= ny < world.world_size):
+                continue
+
+            terrain = world.tiles[ny][nx].terrain
+
+            # Skip forbidden terrains completely
+            if forbidden_terrains and terrain in forbidden_terrains:
+                continue
+
+            # Height / slope factor
+            h_current = world.height_map[current[1]][current[0]]
+            h_next = world.height_map[ny][nx]
+            dh = h_next - h_current
+            terrain_factor = 1 + 10*dh
+
+            # Terrain cost multiplier
+            terrain_factor = 1.0
+            if "water" in terrain:
+                terrain_factor = 10  # water is crossable, but high cost
+
+            tentative_g_score = gscore[current] + terrain_factor
+
+            if neighbor in close_set and tentative_g_score >= gscore.get(neighbor, 0):
+                continue
+
+            if tentative_g_score < gscore.get(neighbor, float('inf')):
+                came_from[neighbor] = current
+                gscore[neighbor] = tentative_g_score
+                fscore[neighbor] = tentative_g_score + abs(nx-goal[0]) + abs(ny-goal[1])
+                heapq.heappush(open_heap, (fscore[neighbor], neighbor))
+
+    return []  # no path found
+
+
+# -----------------------
+# CHARACTER MOVEMENT
+# -----------------------
+def move_character(world, c, pos, path, delta_time):
+    if not path:
+        return pos, path
+
+    x, y = pos
+    target_tile = path[0]
+    tx, ty = target_tile
+
+    dx = tx - x
+    dy = ty - y
+    dist = (dx**2 + dy**2)**0.5
+    if dist == 0:
+        path.pop(0)
+        return (x, y), path
+
+    # Slope factor
+    h_current = world.height_map[int(y)][int(x)]
+    h_next = world.height_map[ty][tx]
+    dh = h_next - h_current
+    terrain_factor = 1 -10*dh
+
+    # Terrain cost multiplier
+    if "water" in world.tiles[int(y)][int(x)].terrain:
+        terrain_factor = 0.2  # water is crossable, but high cost
+
+    # Adjust speed
+    adjusted_speed = c.speed * terrain_factor * (c.energy / 100)
+
+    # Update character
+    c.current_speed = adjusted_speed
+    c.energy *= (1 - 0.01 * (1-min(0.95,terrain_factor))/ c.skills['Endurance'])
+
+    move_dist = min(dist, adjusted_speed * delta_time)
+    new_x = x + dx/dist * move_dist
+    new_y = y + dy/dist * move_dist
+
+    if (new_x - tx)**2 + (new_y - ty)**2 < 0.01:
+        path.pop(0)
+
+    return (new_x, new_y), path
+
+# -----------------------
+# INITIALIZATION
+# -----------------------
+my_world = world.World(100)
+my_world.generate(
+    terrain_weights={"water":1, "barren":0.5, "grassland":1, "forest":1, "mountain":1},
+    water_level=0.1, mountain_level=0.7, n_of_peaks=100, seed=23
+)
+
+for i in range(1):
+    h = character.Human(f"C{i}", age=20+i)
+    my_world.add_character(h)
+
 pygame.init()
-MAP_WIDTH, MAP_HEIGHT = 100, 100  # map in tiles
-WINDOW_WIDTH, WINDOW_HEIGHT = 1024, 780  # screen size in pixels
-screen = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
+screen_size = 800
+screen = pygame.display.set_mode((screen_size, screen_size))
 clock = pygame.time.Clock()
-
-# --- Camera ---
-camera_x, camera_y = 0, 0
-CAMERA_SPEED = 300
-MIN_TILE_SIZE, MAX_TILE_SIZE = 1, 64
-
-# --- Terrains and resources ---
-wood = Resource("wood", (139,69,19))
-stone = Resource("stone", (160,160,160))
-food = Resource("food", (255,255,0))
-
-terrains = {
-    "water": Terrain("water", color=(0,0,255)),
-    "grass": Terrain("grass", color=(0,255,0), resources=[wood,food]),
-    "forest": Terrain("forest", color=(34,139,34), resources=[wood,food]),
-    "mountain": Terrain("mountain", color=(139,137,137), resources=[stone])
-}
-
-fractions = {
-    "water": 0.2,
-    "grass": 0.4,
-    "forest": 0.3,
-    "mountain": 0.1
-}
-
-# --- Generate map ---
-map_grid = generate_terrain_map(MAP_WIDTH, MAP_HEIGHT, terrains=terrains, terrain_fractions=fractions, seed=42)
-map_grid = place_resources(map_grid, num_resources=100)  # large map
-
-# --- Characters ---
-walker = RandomCharacter(speed=5, blocked_terrains=["water","mountain"])
-walker.x, walker.y = find_spawn_point(walker, map_grid)
-flyer  = RandomCharacter(speed=8, blocked_terrains=["mountain"])
-flyer.x, flyer.y = find_spawn_point(flyer, map_grid)
-characters = [walker, flyer]
-
-
-# --- Main loop ---
+tile_size = screen_size // my_world.world_size
 running = True
-TILE_SIZE = MIN_TILE_SIZE
-while running:
-    dt = clock.tick(60)/1000
+font = pygame.font.SysFont(None, 20)
 
-    # --- Events ---
+# Character state
+char_positions = {c:(0,0) for c in my_world.characters}
+char_paths = {c:[] for c in my_world.characters}
+char_idle_timer = {c:0 for c in my_world.characters}
+char_random_target = {c:None for c in my_world.characters}
+
+# Selection
+lasso_start = None
+selected_chars = set()
+directions = [(1,0), (-1,0), (0,1), (0,-1), (1,1), (-1,1), (1,-1), (-1,-1)]
+
+def current_time():
+    return time.time()
+
+# -----------------------
+# LIVE PLOT SETUP
+# -----------------------
+import matplotlib
+matplotlib.use("tkagg")  # or "qt5agg", "wxagg", "gtk3agg", depending on your system
+import matplotlib.pyplot as plt
+
+plt.ion()
+fig, ax = plt.subplots(figsize=(6,3))
+speed_line, = ax.plot([], [], label="Speed (tiles/sec)")
+energy_line, = ax.plot([], [], label="Energy")
+ax.set_xlabel("Time (s)")
+ax.set_ylabel("Value")
+ax.set_title("Character Speed and Energy")
+ax.legend()
+plt.show(block=False)
+
+log_data = {"time": [], "speed": [], "energy": []}
+start_time = time.time()
+
+# -----------------------
+# MAIN LOOP
+# -----------------------
+while running:
+    now = current_time()
+    delta_time = clock.tick(30)/1000.0
+    prev_positions = {c: char_positions[c] for c in my_world.characters}
+
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
-        elif event.type == pygame.MOUSEWHEEL:
-            TILE_SIZE += event.y * 2
-            TILE_SIZE = max(MIN_TILE_SIZE, min(MAX_TILE_SIZE, TILE_SIZE))
+        elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+            lasso_start = event.pos
+            selected_chars.clear()
+        elif event.type == pygame.MOUSEBUTTONUP and event.button == 1 and lasso_start:
+            x1, y1 = lasso_start
+            x2, y2 = event.pos
+            left, right = min(x1,x2)//tile_size, max(x1,x2)//tile_size
+            top, bottom = min(y1,y2)//tile_size, max(y1,y2)//tile_size
+            for c, (x,y) in char_positions.items():
+                if left<=x<=right and top<=y<=bottom:
+                    selected_chars.add(c)
+            lasso_start = None
+        elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 3:
+            mouse_x, mouse_y = event.pos
+            target_tile = (mouse_x//tile_size, mouse_y//tile_size)
+            for c in selected_chars:
+                path = astar(my_world, (int(char_positions[c][0]), int(char_positions[c][1])), target_tile)
+                char_paths[c] = path
+                char_idle_timer[c] = now + 1
+                c.idle = False
 
-    # --- Camera control ---
-    keys = pygame.key.get_pressed()
-    if keys[pygame.K_a]: camera_x -= CAMERA_SPEED*dt
-    if keys[pygame.K_d]: camera_x += CAMERA_SPEED*dt
-    if keys[pygame.K_w]: camera_y -= CAMERA_SPEED*dt
-    if keys[pygame.K_s]: camera_y += CAMERA_SPEED*dt
+    # Update characters
+    for c in my_world.characters:
+        x, y = char_positions[c]
 
-    # Clamp camera
-    max_cam_x = MAP_WIDTH*TILE_SIZE - WINDOW_WIDTH
-    max_cam_y = MAP_HEIGHT*TILE_SIZE - WINDOW_HEIGHT
-    camera_x = max(0, min(max_cam_x, camera_x))
-    camera_y = max(0, min(max_cam_y, camera_y))
+        if char_paths[c]:
+            new_pos, new_path = move_character(my_world, c, (x,y), char_paths[c], delta_time)
+            char_positions[c] = new_pos
+            char_paths[c] = new_path
+            c.idle = False
+            char_idle_timer[c] = now + 1
+        else:
+            if now >= char_idle_timer[c]:
+                c.idle = True
+            if c.idle:
+                if char_random_target[c] is None or (int(x),int(y)) == char_random_target[c]:
+                    for _ in range(10):
+                        dx, dy = random.choice(directions)
+                        nx = int(x) + dx*2
+                        ny = int(y) + dy*2
+                        if 0 <= nx < my_world.world_size and 0 <= ny < my_world.world_size:
+                            if my_world.tiles[ny][nx] != "water":
+                                char_random_target[c] = (nx, ny)
+                                break
+                    path = astar(my_world, (int(x),int(y)), char_random_target[c])
+                    char_paths[c] = path
+                if char_paths[c]:
+                    new_pos, new_path = move_character(my_world, c, (x,y), char_paths[c], delta_time)
+                    char_positions[c] = new_pos
+                    char_paths[c] = new_path
 
-    # --- Update characters ---
-    for c in characters:
-        c.move_randomly(map_grid, dt)
+    # Rendering
+    screen.fill((0,0,0))
+    my_world.render_world(screen)
 
-    # --- Render map ---
-    TILE_SIZE = render_map(screen, map_grid, characters, camera_x, camera_y, WINDOW_WIDTH, WINDOW_HEIGHT, MIN_TILE_SIZE, MAX_TILE_SIZE)
+    for c,(x,y) in char_positions.items():
+        color = (0,255,0) if c in selected_chars else (255,0,0)
+        pygame.draw.circle(screen, color, (int(x*tile_size+tile_size/2), int(y*tile_size+tile_size/2)), tile_size//2)
+
+        # Draw path
+        path = char_paths[c]
+        if path:
+            points = [(px*tile_size+tile_size//2, py*tile_size+tile_size//2) for px,py in path]
+            if len(points) > 1:
+                pygame.draw.lines(screen, (0,255,255), False, points, 2)
+
+        # Draw speed for selected characters
+        if c in selected_chars:
+            c = next(iter(selected_chars))
+            log_data["time"].append(now)
+            log_data["speed"].append(c.current_speed)
+            log_data["energy"].append(c.energy)
+            if len(log_data["time"]) % 3 == 0:
+                speed_line.set_data(log_data["time"], log_data["speed"])
+                energy_line.set_data(log_data["time"], log_data["energy"])
+                ax.relim()
+                ax.autoscale_view()
+                plt.pause(0.001)
+
+            
+            x0, y0 = prev_positions[c]
+            dx = x - x0
+            dy = y - y0
+            dist = (dx**2 + dy**2)**0.5
+            speed = c.current_speed
+            text_surface = font.render(f"{speed:.2f} t/s\nEnergy: {c.energy:.2f}", True, (255,0,0))
+            screen.blit(text_surface, (x*tile_size, y*tile_size - 10))
+
+
+    if lasso_start:
+        cur_mouse = pygame.mouse.get_pos()
+        rect = pygame.Rect(min(lasso_start[0],cur_mouse[0]),
+                           min(lasso_start[1],cur_mouse[1]),
+                           abs(cur_mouse[0]-lasso_start[0]),
+                           abs(cur_mouse[1]-lasso_start[1]))
+        pygame.draw.rect(screen,(0,255,0),rect,2)
 
     pygame.display.flip()
 
 pygame.quit()
+plt.ioff()
+plt.show()
