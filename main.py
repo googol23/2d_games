@@ -6,6 +6,16 @@ import heapq
 import world
 import character
 import task
+import resources
+
+import logging
+logger = logging.getLogger(__name__)
+ch = logging.StreamHandler()
+ch.setLevel(logging.DEBUG)
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+ch.setFormatter(formatter)
+logger.addHandler(ch)
+
 # -----------------------
 # PATHFINDING UTILITIES
 # -----------------------
@@ -22,10 +32,10 @@ def astar(world, start, goal, forbidden_terrains=None):
     neighbors = [(1,0), (-1,0), (0,1), (0,-1), (1,1), (-1,1), (1,-1), (-1,-1)]
     close_set = set()
     came_from = {}
-    gscore = {start:0}
-    fscore = {start:abs(start[0]-goal[0]) + abs(start[1]-goal[1])}
+    g_score = {start:0}
+    f_score = {start:abs(start[0]-goal[0]) + abs(start[1]-goal[1])}
     open_heap = []
-    heapq.heappush(open_heap, (fscore[start], start))
+    heapq.heappush(open_heap, (f_score[start], start))
 
     while open_heap:
         _, current = heapq.heappop(open_heap)
@@ -61,20 +71,19 @@ def astar(world, start, goal, forbidden_terrains=None):
             terrain_factor = 1 + 10*dh
 
             # Terrain cost multiplier
-            terrain_factor = 1.0
             if "water" in terrain:
-                terrain_factor = 10  # water is crossable, but high cost
+                terrain_factor = 1 / c.terrain_factor['water']
 
-            tentative_g_score = gscore[current] + terrain_factor
+            tentative_g_score = g_score[current] + terrain_factor
 
-            if neighbor in close_set and tentative_g_score >= gscore.get(neighbor, 0):
+            if neighbor in close_set and tentative_g_score >= g_score.get(neighbor, 0):
                 continue
 
-            if tentative_g_score < gscore.get(neighbor, float('inf')):
+            if tentative_g_score < g_score.get(neighbor, float('inf')):
                 came_from[neighbor] = current
-                gscore[neighbor] = tentative_g_score
-                fscore[neighbor] = tentative_g_score + abs(nx-goal[0]) + abs(ny-goal[1])
-                heapq.heappush(open_heap, (fscore[neighbor], neighbor))
+                g_score[neighbor] = tentative_g_score
+                f_score[neighbor] = tentative_g_score + abs(nx-goal[0]) + abs(ny-goal[1])
+                heapq.heappush(open_heap, (f_score[neighbor], neighbor))
 
     return []  # no path found
 
@@ -103,15 +112,23 @@ def move_character(world, c, pos, path, delta_time):
     dh = h_next - h_current
     terrain_factor = 1 -10*dh
 
-    # Terrain cost multiplier
+    # Terrain cost
     if "water" in world.tiles[int(y)][int(x)].terrain:
-        terrain_factor = 0.2  # water is crossable, but high cost
+        terrain_factor = c.terrain_factor['water']
+
+    # Carry weight factor
+    weight_factor = 0.2 * c.loaded_weight / c.max_carry_weight()
+
+    # Energy factor
+    weight_factor = c.energy / 100
+
 
     # Adjust speed
-    adjusted_speed = c.speed * terrain_factor * (c.energy / 100)
+    adjusted_speed = c.speed * terrain_factor * weight_factor * weight_factor
+    c.current_speed = adjusted_speed
+
 
     # Update character
-    c.current_speed = adjusted_speed
     c.energy *= (1 - 0.01 * (1-min(0.95,terrain_factor))/ c.skills['Endurance'])
 
     move_dist = min(dist, adjusted_speed * delta_time)
@@ -146,10 +163,10 @@ running = True
 font = pygame.font.SysFont(None, 20)
 
 # Character state
-char_positions = {c:(0,0) for c in my_world.characters}
-char_paths = {c:[] for c in my_world.characters}
-char_idle_timer = {c:0 for c in my_world.characters}
-char_random_target = {c:None for c in my_world.characters}
+character_positions = {c:(0,0) for c in my_world.characters}
+character_paths = {c:[] for c in my_world.characters}
+character_idle_timer = {c:0 for c in my_world.characters}
+
 
 # Selection
 lasso_start = None
@@ -159,23 +176,6 @@ directions = [(1,0), (-1,0), (0,1), (0,-1), (1,1), (-1,1), (1,-1), (-1,-1)]
 def current_time():
     return time.time()
 
-# -----------------------
-# LIVE PLOT SETUP
-# -----------------------
-import matplotlib
-matplotlib.use("tkagg")  # or "qt5agg", "wxagg", "gtk3agg", depending on your system
-import matplotlib.pyplot as plt
-
-plt.ion()
-fig, ax = plt.subplots(figsize=(6,3))
-speed_line, = ax.plot([], [], label="Speed (tiles/sec)")
-energy_line, = ax.plot([], [], label="Energy")
-ax.set_xlabel("Time (s)")
-ax.set_ylabel("Value")
-ax.set_title("Character Speed and Energy")
-ax.legend()
-plt.show(block=False)
-
 log_data = {"time": [], "speed": [], "energy": []}
 start_time = time.time()
 
@@ -184,20 +184,13 @@ start_time = time.time()
 # -----------------------
 task_mode = False
 task_stage = None      # "root", "item", "location"
-task_choice = {}       # {"action":..., "item":..., "location":...}
-
-ROOT_KEYS = {
-    pygame.K_g: "Gathering",
-    pygame.K_b: "Building",
-    pygame.K_h: "Hunting",
-    pygame.K_c: "Crafting",
-}
+task_choice = dict()       # {"action":..., "item":..., "location":...}
 
 while running:
     # Time and delta
     now = current_time()
     delta_time = clock.tick(30) / 1000.0
-    prev_positions = {c: char_positions[c] for c in my_world.characters}
+    prev_positions = {c: character_positions[c] for c in my_world.characters}
 
     # -----------------------
     # Event handling
@@ -205,129 +198,158 @@ while running:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
+            break
 
         # Start lasso selection
-        elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             lasso_start = event.pos
             selected_chars.clear()
+            continue
 
         # End lasso selection
-        elif event.type == pygame.MOUSEBUTTONUP and event.button == 1 and lasso_start:
+        if event.type == pygame.MOUSEBUTTONUP and event.button == 1 and lasso_start:
             x1, y1 = lasso_start
             x2, y2 = event.pos
             left, right = min(x1, x2) // tile_size, max(x1, x2) // tile_size
             top, bottom = min(y1, y2) // tile_size, max(y1, y2) // tile_size
-            for c, (x, y) in char_positions.items():
+            for c, (x, y) in character_positions.items():
                 if left <= x <= right and top <= y <= bottom:
                     selected_chars.add(c)
             lasso_start = None
+            continue
 
-        # Right-click target assignment
-        elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 3:
-            mx, my = event.pos
-            target_tile = (mx // tile_size, my // tile_size)
-            for c in selected_chars:
-                char_paths[c] = astar(my_world, (int(char_positions[c][0]), int(char_positions[c][1])), target_tile)
-                char_idle_timer[c] = now + 1
-                c.idle = False
+        if len(selected_chars) != 0:
+            # Right-click target assignment
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 3:
+                mx, my = event.pos
+                target_tile = (mx // tile_size, my // tile_size)
+                for c in selected_chars:
+                    character_paths[c] = astar(my_world, (int(character_positions[c][0]), int(character_positions[c][1])), target_tile)
+                    character_idle_timer[c] = now + 1
+                    c.idle = False
 
-        # Zoom in/out
-        elif event.type == pygame.MOUSEWHEEL:
-            zoom += zoom_step if event.y > 0 else -zoom_step
-            zoom = max(0.1, zoom)
-            tile_size = int((screen_size / my_world.world_size) * zoom)
-
-        elif event.type == pygame.KEYDOWN:
             # Enter task assignment mode
-            if event.key == pygame.K_t:
-                task_mode = True
-                task_stage = "root"
-                task_choice = {}
-                print("Task assignment started.")
+            if event.type == pygame.KEYDOWN:
+                if not task_mode:
+                    if event.key == pygame.K_t:
+                        task_mode = True
+                        task_stage = "root"
+                        task_choice.clear()
+                        print("Task assignment started.")
+                        continue
+                else:
+                    if event.key == pygame.K_t:
+                        task_mode = False
+                        task_stage = None
+                        task_choice = {}
+                        print("Exiting Task assignment mode.")
+                        continue
 
-            elif task_mode:
-                # 1. choose action
-                if task_stage == "root" and event.key in ROOT_KEYS:
-                    action = ROOT_KEYS[event.key]
-                    task_choice["action"] = action
-                    task_stage = "item"
-                    print(f"Action: {action}")
+                    # 1. choose action
+                    if task_stage == "root" and event.key in task.ROOT_KEYS:
+                        action = task.ROOT_KEYS[event.key]
+                        task_choice["action"] = action
+                        task_stage = "item"
+                        print(f"Action: {action}")
 
-                # 2. choose item
-                elif task_stage == "item":
-                    action = task_choice["action"]
-                    if event.key in task.TASK_TREE[action]["keys"]:
-                        item = task.TASK_TREE[action]["keys"][event.key]
-                        task_choice["item"] = item
-                        task_stage = "location"
-                        print(f"Item: {item}")
+                    # 2. choose item
+                    elif task_stage == "item":
+                        action = task_choice["action"]
+                        if event.key in task.TASK_TREE[action]["keys"]:
+                            item = task.TASK_TREE[action]["keys"][event.key]
+                            task_choice["item"] = item
+                            task_stage = "location"
+                            print(f"Item: {item}")
 
-                # 3. choose location
-                elif task_stage == "location" and event.key in task.LOCATIONS["keys"]:
-                    location_choice = task.LOCATIONS["keys"][event.key]
-                    if location_choice == "here":
-                        loc = (int(char_positions[c][0]), int(char_positions[c][1]))
-                    elif location_choice == "mouse":
-                        mx, my = pygame.mouse.get_pos()
-                        loc = (mx//tile_size, my//tile_size)
-                    task_choice["location"] = loc
+                    # 3. choose location
+                    elif task_stage == "location" and event.key in task.LOCATIONS["keys"]:
+                        location_choice = task.LOCATIONS["keys"][event.key]
+                        if location_choice == "here":
+                            loc = (int(character_positions[c][0]), int(character_positions[c][1]))
+                        elif location_choice == "mouse":
+                            mx, my = pygame.mouse.get_pos()
+                            loc = (mx//tile_size, my//tile_size)
+                        task_choice["location"] = loc
 
-                    # assign task to all selected characters
-                    for c in selected_chars:
-                        c.add_task({
-                            "action" : action,
-                            "item" : item,
-                            "location" : loc,
-                        })
+                        # assign task to all selected characters
+                        for c in selected_chars:
+                            c.add_task({
+                                "action" : action,
+                                "item" : item,
+                                "location" : loc,
+                            })
 
-                        print(f"Assigned: {task_choice}\nto Character: {c.name} ")
-                    task_mode = False
-                    task_stage = None
+                            print(f"Assigned: {task_choice}\nto Character: {c.name} ")
+                        task_mode = False
+                        task_stage = None
 
     # -----------------------
     # Update characters
     # -----------------------
     for c in my_world.characters:
-        x, y = char_positions[c]
+        x, y = character_positions[c]
 
         # -----------------------
         # Perform task
         # -----------------------
-        if c.tasks:
-            task = c.tasks[0]  # look at first task in the queue
+        if len(c.tasks) == 0:
+            print(f"Idle character at {x},{y}: {c}")
+        else:
+            task = c.tasks[0]
+            if 'state' in 'Blocked' in task['state']:
+                print(f"Character cannot perform task: {task['state']}")
+                continue
+
             action = task.get("action")
             item   = task.get("item")
             target = task.get("location")
 
-            x, y = char_positions[c]
+            x, y = character_positions[c]
 
             # 1. Gathering tasks
             if action == "Gathering":
-                if (int(x), int(y)) != target:
-                    # not at drop location yet → pathfind there
-                    if not char_paths[c]:
-                        char_paths[c] = astar(my_world, (int(x), int(y)), target)
-                else:
-                    # at drop location → simulate gathering loop
-                    if random.random() < 0.05:  # 1% chance per frame to "find item"
-                        print(f"{c.name} found {item} and dropped it at {target}.")
-                        c.inventory[item] = c.inventory.get(item, 0) + 1
+                if c.loaded_weight > 0.98*c.max_carry_weight():
+                    task['state'] = "Blocked: Cannot carry more weight"
+
+                    if (int(x), int(y)) == target:
+                        print("At drop location, dropping target {item}")
+                        c.loaded_weight -= c.inventory[item]
+                        c.inventory[item] = 0
+                        print(c.inventory)
+
                     else:
-                        dx = random.randint(-2, 2)
-                        dy = random.randint(-2, 2)
+                        print("Moving to drop location ... ")
+                        character_paths[c] = astar(my_world, (int(x), int(y)), target)
+                else:
+                    # Start gathering clock
+                    if random.random() < (0.05 + 0.01*c.skills['Gathering']):
+                        item_weight = resources.RESOURCE_DATA[item].abundance
+                        c.knowledge.try_unlocks("gathered_stone")
+                        print(f"{c.name} found {item}({item_weight}kg) at {target}.")
+                        if c.loaded_weight + item_weight <= c.max_carry_weight():
+                            c.inventory[item] += item_weight
+                            c.loaded_weight   += item_weight
+                        task['search_time'] = 0
+                    else:
+                        task['search_time'] += 1
+                        if task['search_time'] > 30:
+                            task['search_time'] = 0
+                            dx = random.randint(-2, 2)
+                            dy = random.randint(-2, 2)
 
-                        # compute target tile
-                        nx = max(0, min(my_world.world_size-1, x + dx))
-                        ny = max(0, min(my_world.world_size-1, y + dy))
+                            # compute target tile
+                            nx = max(0, min(my_world.world_size-1, x + dx))
+                            ny = max(0, min(my_world.world_size-1, y + dy))
 
-                        # compute path
-                        char_paths[c] = astar(my_world, (int(x), int(y)), (nx, ny))
+                            print(f"Simulate gathering loop, moving to {nx},{ny}")
+                            # compute path
+                            character_paths[c] = astar(my_world, (int(x), int(y)), (nx, ny))
 
             # 2. Building tasks
             elif action == "build":
                 if (int(x), int(y)) != target:
-                    if not char_paths[c]:
-                        char_paths[c] = astar(my_world, (int(x), int(y)), target)
+                    if not character_paths[c]:
+                        character_paths[c] = astar(my_world, (int(x), int(y)), target)
                 else:
                     # arrived at location → build
                     print(f"{c.name} is building {item} at {target}.")
@@ -338,14 +360,13 @@ while running:
                         print(f"{item} built at {target}.")
                         c.tasks.pop(0)  # task complete
 
-                # Extend with more actions as needed...
 
-        if char_paths[c]:
+        if character_paths[c]:
             # Follow assigned path
-            new_pos, char_paths[c] = move_character(my_world, c, (x, y), char_paths[c], delta_time)
-            char_positions[c] = new_pos
+            new_pos, character_paths[c] = move_character(my_world, c, (x, y), character_paths[c], delta_time)
+            character_positions[c] = new_pos
             c.idle = False
-            char_idle_timer[c] = now + 1
+            character_idle_timer[c] = now + 1
 
     # -----------------------
     # Rendering
@@ -354,27 +375,18 @@ while running:
     my_world.render_world(screen)
 
     # Draw characters, paths, speed & energy
-    for c, (x, y) in char_positions.items():
+    for c, (x, y) in character_positions.items():
         color = (0, 255, 0) if c in selected_chars else (255, 0, 0)
         pygame.draw.circle(screen, color, (int(x*tile_size + tile_size/2), int(y*tile_size + tile_size/2)), max(2, tile_size//2))
 
         # Path
-        path = char_paths[c]
+        path = character_paths[c]
         if path and len(path) > 1:
             points = [(px*tile_size + tile_size/2, py*tile_size + tile_size/2) for px, py in path]
             pygame.draw.lines(screen, (0, 255, 255), False, points, max(1, int(tile_size/8)))
 
         # Selected character stats and live plot
         if c in selected_chars:
-            log_data["time"].append(now)
-            log_data["speed"].append(c.current_speed)
-            log_data["energy"].append(c.energy)
-            if len(log_data["time"]) % 3 == 0:
-                speed_line.set_data(log_data["time"], log_data["speed"])
-                energy_line.set_data(log_data["time"], log_data["energy"])
-                ax.relim()
-                ax.autoscale_view()
-                plt.pause(0.001)
             text_surface = font.render(f"{c.current_speed:.2f} t/s | {c.energy:.1f} E", True, (255,0,0))
             screen.blit(text_surface, (x*tile_size, y*tile_size - 10))
 
@@ -384,12 +396,13 @@ while running:
     fog = pygame.Surface((screen_size, screen_size), flags=pygame.SRCALPHA)  # enable per-pixel alpha
     fog.fill((0, 0, 0, 200))  # semi-transparent black
     fog.set_alpha(200)
-    for c, (x, y) in char_positions.items():
+    for c, (x, y) in character_positions.items():
         cx, cy = int(x*tile_size + tile_size/2), int(y*tile_size + tile_size/2)
         visibility_radius = 10
         radius_px = int(visibility_radius * tile_size)
         pygame.draw.circle(fog, (0,0,0,0), (cx, cy), radius_px)
     screen.blit(fog, (0, 0))
+    # -----------------------
 
     # Draw lasso selection rectangle
     if lasso_start:
@@ -401,5 +414,3 @@ while running:
     pygame.display.flip()
 
 pygame.quit()
-plt.ioff()
-plt.show()

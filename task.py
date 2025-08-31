@@ -1,12 +1,18 @@
 import pygame
 
+ROOT_KEYS = {
+    pygame.K_g: "Gathering",
+    pygame.K_b: "Building",
+    pygame.K_h: "Hunting",
+    pygame.K_c: "Crafting",
+}
 
 TASK_TREE = {
     "Gathering": {
         "keys": {
-            pygame.K_s: "stone",
-            pygame.K_b: "berries",
-            pygame.K_w: "wood"
+            pygame.K_s: "Stone",
+            pygame.K_b: "Berries",
+            pygame.K_w: "Wood"
         },
         "next": "item"
     },

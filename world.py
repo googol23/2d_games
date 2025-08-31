@@ -1,4 +1,5 @@
 import terrain
+import resources
 import topology
 
 import random
@@ -176,6 +177,9 @@ class World:
         logger.info("(...) Now the earth was formless and empty, darkness was over the surface of the deep (...)")
         if len(terrain.TERRAIN_DATA) == 0:
             terrain.load_terrains_data("terrains_data.json")
+
+        if len(resources.RESOURCE_DATA) == 0:
+            resources.load_resource_data("resource_data.json")
 
         self.tiles = [[None for _ in range(self.world_size)] for _ in range(self.world_size)]
 

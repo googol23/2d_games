@@ -1,0 +1,151 @@
+{
+    "Stone": {"unlocked": true, "prereqs": [], "rules": []},
+    "Flint": {
+        "unlocked": false,
+        "prereqs": ["Stone"],
+        "rules": [
+            {"type": "chance_on_event", "event": "gathered_stone", "chance": 0.3}
+        ],
+        "weight": 1
+    },
+
+    "Branch": {"unlocked": true, "prereqs": [], "rules": [], "weight": 5.0},
+    "Stick": {
+        "unlocked": false,
+        "prereqs": ["Branch"],
+        "rules": [
+            {"type": "chance_on_event", "event": "gathered_branch", "chance": 0.3}
+        ],
+        "weight": 2.0
+    },
+    "Leaf": {
+        "unlocked": false,
+        "prereqs": ["Branch"],
+        "rules": [
+            {"type": "chance_on_event", "event": "gathered_branch", "chance": 0.3}
+        ],
+        "weight": 0.2
+    },
+    "Bark": {
+        "unlocked": false,
+        "prereqs": ["Branch"],
+        "rules": [
+            {"type": "chance_on_event", "event": "gathered_branch", "chance": 0.3}
+        ],
+        "weight": 0.3
+    },
+    "Fiber": {
+        "unlocked": false,
+        "prereqs": ["Branch", "Stone"],
+        "rules": [
+            {"type": "chance_on_event", "event": "gathered_branch", "chance": 0.1}
+        ],
+        "weight": 0.1
+    },
+    "Fiber Rope": {
+        "unlocked": false,
+        "prereqs": ["Fiber"],
+        "rules": [
+            {"type": "chance_on_event", "event": "gathered_branch", "chance": 0.05},
+            {"type": "chance_on_event", "event": "gathered_fiber", "chance": 0.2}
+        ],
+        "crafting": {
+            "Fiber" : 10
+        },
+        "weight": 1.0
+    },
+    "Fiber Belt": {
+        "unlocked": false,
+        "prereqs": ["Fiber Rope"],
+        "rules": [
+            {"type": "chance_on_event", "event": "crafted_fiber_rope", "chance": 0.05}
+        ],
+        "crafting": {
+            "Fiber Rope" : 1
+        },
+        "weight": 1.0
+
+    },
+
+    "Stone Blade": {
+        "unlocked": false,
+        "prereqs": ["Stone", "Flint"],
+        "rules": [
+            {"type": "chance_on_event", "event": "gathered_stone", "chance": 0.3}
+        ],
+        "crafting" : {
+            "Stone" : 1,
+            "Flint" : 1
+        },
+        "weight": 1
+    },
+
+    "Wooden Spear": {
+        "unlocked": false,
+        "prereqs": ["Stone Blade", "Branch"],
+        "rules": [
+            {"type": "chance_on_event", "event": "gathered_branch", "chance": 0.3}
+        ],
+        "crafting" : {
+            "Stone Blade" : 1,
+            "Branch" : 1
+        },
+        "weight": 3.5
+    },
+
+
+    "Stone Hammer": {
+        "unlocked": false,
+        "prereqs": ["Stone", "Stick", "Fiber Rope"],
+        "rules": [
+            {"type": "chance_on_event", "event": "gathered_stone", "chance": 0.3}
+        ],
+        "crafting" : {
+            "Stone" : 1,
+            "Stick" : 2,
+            "Fiber Rope" : 1
+        },
+        "weight": 5.0
+    },
+    "Stone Knife": {
+        "unlocked": false,
+        "prereqs": ["Stone Blade", "Stick", "Fiber Rope"],
+        "rules": [
+            {"type": "chance_on_event", "event": "gathered_stone", "chance": 0.3}
+        ],
+        "crafting" : {
+            "Stone Blade" : 1,
+            "Stick" : 1,
+            "Fiber Rope" : 1
+        },
+        "weight": 3.0
+    },
+    "Stone Axe": {
+        "unlocked": false,
+        "prereqs": ["Stone Blade", "Stick", "Fiber Rope"],
+        "rules": [
+            {"type": "chance_on_event", "event": "gathered_stone", "chance": 0.3}
+        ],
+        "crafting" : {
+            "Stone Blade" : 1,
+            "Stick" : 2,
+            "Fiber Rope" : 1
+        },
+        "weight": 5.0
+    },
+    "Stone Spear": {
+        "unlocked": false,
+        "prereqs": ["Stone Blade", "Branch", "Fiber Rope"],
+        "rules": [
+            {"type": "chance_on_event", "event": "gathered_stone", "chance": 0.3}
+        ],
+        "crafting" : {
+            "Stone Blade" : 1,
+            "Branch" : 1,
+            "Stick" : 2,
+            "Fiber Rope" : 1
+        },
+        "weight": 6.0
+    }
+
+}

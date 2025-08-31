@@ -1,5 +1,10 @@
+import numpy as np
 from abc import ABC, abstractmethod
 import logging
+import resources
+from collections import defaultdict
+import knowledge_tree
+
 logger = logging.getLogger(__name__)
 
 ENERGY_PER_TILE = 1
@@ -13,6 +18,8 @@ class Character(ABC):
         self.idle = True
         self.energy = energy
         self.current_speed = 0
+
+        self.knowledge = knowledge_tree.KnowledgeTree()
 
     def age_up(self, years=1):
         self.age += years
@@ -29,16 +36,38 @@ class Character(ABC):
 
 # Movement-focused classes
 class Walker(Character):
+    def __init__(self, name, age=0, health=100, speed=10):
+        super().__init__(name, age, health, speed)
+        self.terrain_factor = {
+            'water' : 0.2,
+            'land' : 1,
+            'air' : 0
+        }
+
     def move(self):
         logger.debug(f"{self.name} walks on land.")
 
 
 class Swimmer(Character):
+    def __init__(self, name, age=0, health=100, speed=10):
+        super().__init__(name, age, health, speed)
+        self.terrain_factor = {
+            'water' : 1,
+            'land' : 0.01,
+            'air' : 0
+        }
     def move(self):
         logger.debug(f"{self.name} swims in water.")
 
 
 class Flyer(Character):
+    def __init__(self, name, age=0, health=100, speed=10):
+        super().__init__(name, age, health, speed)
+        self.terrain_factor = {
+            'water' : 0.01,
+            'land' : 0.2,
+            'air' : 1
+        }
     def move(self):
         logger.debug(f"{self.name} flies in the sky.")
 
@@ -47,8 +76,8 @@ class Human(Walker, Swimmer):
     def __init__(self, name, age=0, health=100, speed=10, skills=None):
         super().__init__(name, age, health, speed)
         self.tasks = []  # list of tasks
-        self.carrying = None  # what the character carries
-        self.inventory = {}
+        self.loaded_weight = 0
+        self.inventory = defaultdict(float)
 
         # Default survival skills if none provided
         default_skills = {
@@ -67,6 +96,10 @@ class Human(Walker, Swimmer):
             "Endurance": 1,
         }
         self.skills = skills or default_skills
+
+    def max_carry_weight(self):
+        return 10 + 2*self.skills['Strength']
+
 
     def add_task(self, task):
         self.tasks.append(task)
@@ -94,4 +127,15 @@ if __name__ == "__main__":
         "item"   : "S",
         "target" : "H"
     })
-    print(h)
+    import time
+    import random
+    h.knowledge.visualize("my_knowledge_tree")
+    time.sleep(1)
+    events = ["gathered_stone", "gathered_branch"]
+    while( not h.knowledge.all_unlocked()):
+        event = random.choice(events)
+        print(event)
+        h.knowledge.try_unlocks(event)
+        h.knowledge.visualize("my_knowledge_tree")
+        time.sleep(1)
+
