@@ -46,9 +46,13 @@ class Flyer(Character):
 class Human(Walker, Swimmer):
     def __init__(self, name, age=0, health=100, speed=10, skills=None):
         super().__init__(name, age, health, speed)
+        self.tasks = []  # list of tasks
+        self.carrying = None  # what the character carries
+        self.inventory = {}
 
         # Default survival skills if none provided
         default_skills = {
+            "Gathering": 0,
             "Foraging": 0,
             "Hunting": 0,
             "Fishing": 0,
@@ -63,6 +67,9 @@ class Human(Walker, Swimmer):
             "Endurance": 1,
         }
         self.skills = skills or default_skills
+
+    def add_task(self, task):
+        self.tasks.append(task)
 
     def move(self):
         # You can specialize Human's behavior here
@@ -82,4 +89,9 @@ if __name__ == "__main__":
     h.move()            # uses Human's custom move()
     h.age_up(5)         # aging
     h.take_damage(30)   # damage system
+    h.add_task({
+        "action" : "G",
+        "item"   : "S",
+        "target" : "H"
+    })
     print(h)

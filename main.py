@@ -5,7 +5,7 @@ import heapq
 
 import world
 import character
-
+import task
 # -----------------------
 # PATHFINDING UTILITIES
 # -----------------------
@@ -141,6 +141,7 @@ screen_size = 800
 screen = pygame.display.set_mode((screen_size, screen_size))
 clock = pygame.time.Clock()
 tile_size = screen_size // my_world.world_size
+zoom_step = 0.1
 running = True
 font = pygame.font.SysFont(None, 20)
 
@@ -181,83 +182,190 @@ start_time = time.time()
 # -----------------------
 # MAIN LOOP
 # -----------------------
+task_mode = False
+task_stage = None      # "root", "item", "location"
+task_choice = {}       # {"action":..., "item":..., "location":...}
+
+ROOT_KEYS = {
+    pygame.K_g: "Gathering",
+    pygame.K_b: "Building",
+    pygame.K_h: "Hunting",
+    pygame.K_c: "Crafting",
+}
+
 while running:
+    # Time and delta
     now = current_time()
-    delta_time = clock.tick(30)/1000.0
+    delta_time = clock.tick(30) / 1000.0
     prev_positions = {c: char_positions[c] for c in my_world.characters}
 
+    # -----------------------
+    # Event handling
+    # -----------------------
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
+
+        # Start lasso selection
         elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             lasso_start = event.pos
             selected_chars.clear()
+
+        # End lasso selection
         elif event.type == pygame.MOUSEBUTTONUP and event.button == 1 and lasso_start:
             x1, y1 = lasso_start
             x2, y2 = event.pos
-            left, right = min(x1,x2)//tile_size, max(x1,x2)//tile_size
-            top, bottom = min(y1,y2)//tile_size, max(y1,y2)//tile_size
-            for c, (x,y) in char_positions.items():
-                if left<=x<=right and top<=y<=bottom:
+            left, right = min(x1, x2) // tile_size, max(x1, x2) // tile_size
+            top, bottom = min(y1, y2) // tile_size, max(y1, y2) // tile_size
+            for c, (x, y) in char_positions.items():
+                if left <= x <= right and top <= y <= bottom:
                     selected_chars.add(c)
             lasso_start = None
+
+        # Right-click target assignment
         elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 3:
-            mouse_x, mouse_y = event.pos
-            target_tile = (mouse_x//tile_size, mouse_y//tile_size)
+            mx, my = event.pos
+            target_tile = (mx // tile_size, my // tile_size)
             for c in selected_chars:
-                path = astar(my_world, (int(char_positions[c][0]), int(char_positions[c][1])), target_tile)
-                char_paths[c] = path
+                char_paths[c] = astar(my_world, (int(char_positions[c][0]), int(char_positions[c][1])), target_tile)
                 char_idle_timer[c] = now + 1
                 c.idle = False
 
+        # Zoom in/out
+        elif event.type == pygame.MOUSEWHEEL:
+            zoom += zoom_step if event.y > 0 else -zoom_step
+            zoom = max(0.1, zoom)
+            tile_size = int((screen_size / my_world.world_size) * zoom)
+
+        elif event.type == pygame.KEYDOWN:
+            # Enter task assignment mode
+            if event.key == pygame.K_t:
+                task_mode = True
+                task_stage = "root"
+                task_choice = {}
+                print("Task assignment started.")
+
+            elif task_mode:
+                # 1. choose action
+                if task_stage == "root" and event.key in ROOT_KEYS:
+                    action = ROOT_KEYS[event.key]
+                    task_choice["action"] = action
+                    task_stage = "item"
+                    print(f"Action: {action}")
+
+                # 2. choose item
+                elif task_stage == "item":
+                    action = task_choice["action"]
+                    if event.key in task.TASK_TREE[action]["keys"]:
+                        item = task.TASK_TREE[action]["keys"][event.key]
+                        task_choice["item"] = item
+                        task_stage = "location"
+                        print(f"Item: {item}")
+
+                # 3. choose location
+                elif task_stage == "location" and event.key in task.LOCATIONS["keys"]:
+                    location_choice = task.LOCATIONS["keys"][event.key]
+                    if location_choice == "here":
+                        loc = (int(char_positions[c][0]), int(char_positions[c][1]))
+                    elif location_choice == "mouse":
+                        mx, my = pygame.mouse.get_pos()
+                        loc = (mx//tile_size, my//tile_size)
+                    task_choice["location"] = loc
+
+                    # assign task to all selected characters
+                    for c in selected_chars:
+                        c.add_task({
+                            "action" : action,
+                            "item" : item,
+                            "location" : loc,
+                        })
+
+                        print(f"Assigned: {task_choice}\nto Character: {c.name} ")
+                    task_mode = False
+                    task_stage = None
+
+    # -----------------------
     # Update characters
+    # -----------------------
     for c in my_world.characters:
         x, y = char_positions[c]
 
+        # -----------------------
+        # Perform task
+        # -----------------------
+        if c.tasks:
+            task = c.tasks[0]  # look at first task in the queue
+            action = task.get("action")
+            item   = task.get("item")
+            target = task.get("location")
+
+            x, y = char_positions[c]
+
+            # 1. Gathering tasks
+            if action == "Gathering":
+                if (int(x), int(y)) != target:
+                    # not at drop location yet → pathfind there
+                    if not char_paths[c]:
+                        char_paths[c] = astar(my_world, (int(x), int(y)), target)
+                else:
+                    # at drop location → simulate gathering loop
+                    if random.random() < 0.05:  # 1% chance per frame to "find item"
+                        print(f"{c.name} found {item} and dropped it at {target}.")
+                        c.inventory[item] = c.inventory.get(item, 0) + 1
+                    else:
+                        dx = random.randint(-2, 2)
+                        dy = random.randint(-2, 2)
+
+                        # compute target tile
+                        nx = max(0, min(my_world.world_size-1, x + dx))
+                        ny = max(0, min(my_world.world_size-1, y + dy))
+
+                        # compute path
+                        char_paths[c] = astar(my_world, (int(x), int(y)), (nx, ny))
+
+            # 2. Building tasks
+            elif action == "build":
+                if (int(x), int(y)) != target:
+                    if not char_paths[c]:
+                        char_paths[c] = astar(my_world, (int(x), int(y)), target)
+                else:
+                    # arrived at location → build
+                    print(f"{c.name} is building {item} at {target}.")
+                    # fake progress
+                    task.setdefault("progress", 0)
+                    task["progress"] += 1
+                    if task["progress"] > 50:  # done after 50 ticks
+                        print(f"{item} built at {target}.")
+                        c.tasks.pop(0)  # task complete
+
+                # Extend with more actions as needed...
+
         if char_paths[c]:
-            new_pos, new_path = move_character(my_world, c, (x,y), char_paths[c], delta_time)
+            # Follow assigned path
+            new_pos, char_paths[c] = move_character(my_world, c, (x, y), char_paths[c], delta_time)
             char_positions[c] = new_pos
-            char_paths[c] = new_path
             c.idle = False
             char_idle_timer[c] = now + 1
-        else:
-            if now >= char_idle_timer[c]:
-                c.idle = True
-            if c.idle:
-                if char_random_target[c] is None or (int(x),int(y)) == char_random_target[c]:
-                    for _ in range(10):
-                        dx, dy = random.choice(directions)
-                        nx = int(x) + dx*2
-                        ny = int(y) + dy*2
-                        if 0 <= nx < my_world.world_size and 0 <= ny < my_world.world_size:
-                            if my_world.tiles[ny][nx] != "water":
-                                char_random_target[c] = (nx, ny)
-                                break
-                    path = astar(my_world, (int(x),int(y)), char_random_target[c])
-                    char_paths[c] = path
-                if char_paths[c]:
-                    new_pos, new_path = move_character(my_world, c, (x,y), char_paths[c], delta_time)
-                    char_positions[c] = new_pos
-                    char_paths[c] = new_path
 
+    # -----------------------
     # Rendering
-    screen.fill((0,0,0))
+    # -----------------------
+    screen.fill((0, 0, 0))
     my_world.render_world(screen)
 
-    for c,(x,y) in char_positions.items():
-        color = (0,255,0) if c in selected_chars else (255,0,0)
-        pygame.draw.circle(screen, color, (int(x*tile_size+tile_size/2), int(y*tile_size+tile_size/2)), tile_size//2)
+    # Draw characters, paths, speed & energy
+    for c, (x, y) in char_positions.items():
+        color = (0, 255, 0) if c in selected_chars else (255, 0, 0)
+        pygame.draw.circle(screen, color, (int(x*tile_size + tile_size/2), int(y*tile_size + tile_size/2)), max(2, tile_size//2))
 
-        # Draw path
+        # Path
         path = char_paths[c]
-        if path:
-            points = [(px*tile_size+tile_size//2, py*tile_size+tile_size//2) for px,py in path]
-            if len(points) > 1:
-                pygame.draw.lines(screen, (0,255,255), False, points, 2)
+        if path and len(path) > 1:
+            points = [(px*tile_size + tile_size/2, py*tile_size + tile_size/2) for px, py in path]
+            pygame.draw.lines(screen, (0, 255, 255), False, points, max(1, int(tile_size/8)))
 
-        # Draw speed for selected characters
+        # Selected character stats and live plot
         if c in selected_chars:
-            c = next(iter(selected_chars))
             log_data["time"].append(now)
             log_data["speed"].append(c.current_speed)
             log_data["energy"].append(c.energy)
@@ -267,24 +375,28 @@ while running:
                 ax.relim()
                 ax.autoscale_view()
                 plt.pause(0.001)
-
-            
-            x0, y0 = prev_positions[c]
-            dx = x - x0
-            dy = y - y0
-            dist = (dx**2 + dy**2)**0.5
-            speed = c.current_speed
-            text_surface = font.render(f"{speed:.2f} t/s\nEnergy: {c.energy:.2f}", True, (255,0,0))
+            text_surface = font.render(f"{c.current_speed:.2f} t/s | {c.energy:.1f} E", True, (255,0,0))
             screen.blit(text_surface, (x*tile_size, y*tile_size - 10))
 
+    # -----------------------
+    # Fog of War
+    # -----------------------
+    fog = pygame.Surface((screen_size, screen_size), flags=pygame.SRCALPHA)  # enable per-pixel alpha
+    fog.fill((0, 0, 0, 200))  # semi-transparent black
+    fog.set_alpha(200)
+    for c, (x, y) in char_positions.items():
+        cx, cy = int(x*tile_size + tile_size/2), int(y*tile_size + tile_size/2)
+        visibility_radius = 10
+        radius_px = int(visibility_radius * tile_size)
+        pygame.draw.circle(fog, (0,0,0,0), (cx, cy), radius_px)
+    screen.blit(fog, (0, 0))
 
+    # Draw lasso selection rectangle
     if lasso_start:
-        cur_mouse = pygame.mouse.get_pos()
-        rect = pygame.Rect(min(lasso_start[0],cur_mouse[0]),
-                           min(lasso_start[1],cur_mouse[1]),
-                           abs(cur_mouse[0]-lasso_start[0]),
-                           abs(cur_mouse[1]-lasso_start[1]))
-        pygame.draw.rect(screen,(0,255,0),rect,2)
+        mx, my = pygame.mouse.get_pos()
+        rect = pygame.Rect(min(lasso_start[0], mx), min(lasso_start[1], my),
+                           abs(mx - lasso_start[0]), abs(my - lasso_start[1]))
+        pygame.draw.rect(screen, (0, 255, 0), rect, 2)
 
     pygame.display.flip()
 
