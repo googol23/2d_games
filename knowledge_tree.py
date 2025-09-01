@@ -20,12 +20,19 @@ class ChanceRule(EventRule):
 class Item(BaseModel):
     unlocked: bool
     prereqs: List[str]
-    rules: List[Union[EventRule, ChanceRule]]
+    rules: List[Union[ChanceRule, EventRule]]
     weight: float
     description: Optional[str]
     crafting: Optional[Dict[str,int]] = None
 
-class KnowledgeTree(RootModel[Dict[str, Item]]):
+class Food(Item):
+    nutrition: int  # how much it restores (could be negative for poison)
+
+class Tool(Item):
+    durability: int
+    damage: int
+
+class KnowledgeTree(RootModel[Dict[str, Union[Tool,Food,Item]]]):
 
     @classmethod
     def LoadTree(cls, filepath="knowledge.json") -> Self:
@@ -35,10 +42,17 @@ class KnowledgeTree(RootModel[Dict[str, Item]]):
         but replaces raw rules with callable functions.
         """
         with open(filepath, "r") as f:
-            return cls.model_validate_json(f.read())
+            instance =  cls.model_validate_json(f.read())
 
-        for item in self.root.values():
-            item.rules = [ChanceRule(**r) if "chance" in r else EventRule(**r) for r in item.rules]
+        for item in instance.root.values():
+            item.rules = [
+                ChanceRule(**r) if isinstance(r, dict) and "chance" in r else
+                EventRule(**r) if isinstance(r, dict) else
+                r  # already a rule instance
+                for r in item.rules
+            ]
+
+        return instance
 
     def __getitem__(self, item:str) -> Item:
         return self.root[item]
@@ -101,6 +115,7 @@ if __name__ == "__main__":
 
     # Initial visualization
     tree.visualize("my_knowledge_tree")
+    time.sleep(1.5)
 
     # Simulate random events until all knowledge is unlocked
     while not tree.all_unlocked():
@@ -115,5 +130,4 @@ if __name__ == "__main__":
         event = random.choice(events)
         tree.try_unlocks(event)
         tree.visualize("my_knowledge_tree")
-        # time.sleep(0.5)
-    
+        time.sleep(0.5)

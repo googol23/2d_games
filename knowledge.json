@@ -23,6 +23,16 @@
         "weight": 5.0,
         "description": "A sturdy branch, useful for many crafts."
     },
+    "Berry": {
+        "unlocked": false,
+        "prereqs": ["Branch"],
+        "rules": [
+            {"event": "collected_branch", "chance": 0.05}
+        ],
+        "weight": 0.05,
+        "nutrition": 1,
+        "description": "Wow, this is tasty."
+    },
     "Stick": {
         "unlocked": false,
         "prereqs": ["Branch"],
@@ -36,7 +46,7 @@
         "unlocked": false,
         "prereqs": ["Branch"],
         "rules": [
-            {"event": "collected_branch", "chance": 0.3}
+            {"event": "collected_branch", "chance": 0.8}
         ],
         "weight": 0.2,
         "description": "Leaves — soft, light, and plentiful."
@@ -45,7 +55,7 @@
         "unlocked": false,
         "prereqs": ["Branch"],
         "rules": [
-            {"event": "collected_branch", "chance": 0.3}
+            {"event": "collected_branch", "chance": 0.2}
         ],
         "weight": 0.3,
         "description": "Tree bark — tough and fibrous."
@@ -95,6 +105,8 @@
             "Flint": 1
         },
         "weight": 1.0,
+        "durability": 100,
+        "damage" : 3,
         "description": "A sharp blade chipped from stone."
     },
 
@@ -109,6 +121,8 @@
             "Branch": 1
         },
         "weight": 3.5,
+        "durability": 100,
+        "damage" : 10,
         "description": "A wooden spear, your first hunting tool."
     },
 
@@ -124,6 +138,8 @@
             "Fiber Rope": 1
         },
         "weight": 5.0,
+        "durability": 100,
+        "damage" : 1,
         "description": "A hammer of stone and wood — good for building."
     },
     "Stone Knife": {
@@ -138,6 +154,8 @@
             "Fiber Rope": 1
         },
         "weight": 3.0,
+        "durability": 100,
+        "damage" : 5,
         "description": "A stone knife for cutting and carving."
     },
     "Stone Axe": {
@@ -152,6 +170,8 @@
             "Fiber Rope": 1
         },
         "weight": 5.0,
+        "durability": 100,
+        "damage" : 10,
         "description": "A stone axe — makes chopping wood easier."
     },
     "Stone Spear": {
@@ -167,6 +187,8 @@
             "Fiber Rope": 1
         },
         "weight": 6.0,
+        "durability": 100,
+        "damage" : 15,
         "description": "A heavy spear tipped with stone."
     }
 }

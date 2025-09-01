@@ -1,0 +1,80 @@
+import pickle
+from pathlib import Path
+import json
+from pydantic import BaseModel
+from typing import List
+
+from pympler import asizeof
+
+class TreeModel(BaseModel):
+    name: str
+    growth_rate: int          # years to harvest
+    water_consumption: float
+    temp_range: List[int]     # [min_temp, max_temp]
+    log_yield: int               # logs per tree
+    seed_yield: int           # seeds per year
+    wood_type: str
+    description: str = ""
+    unlocked: bool = True
+
+class Tree:
+    BINARY_FILE = "trees.bin"
+
+    def __init__(self, model: TreeModel):
+        self.name = model.name
+        self.growth_rate = model.growth_rate
+        self.water_consumption = model.water_consumption
+        self.temp_range = model.temp_range
+        self.log_yield = model.log_yield
+        self.seed_yield = model.seed_yield
+        self.wood_type = model.wood_type
+        self.description = model.description
+        self.unlocked = model.unlocked
+
+    def __repr__(self):
+        return f"<Tree {self.name}, {self.wood_type}, harvest in {self.growth_rate} years>"
+
+    @classmethod
+    def load_trees(cls, json_file="trees.json"):
+        """
+        Load trees from Pickle binary if it exists, otherwise from JSON.
+        Returns a list of Tree instances.
+        """
+        if Path(cls.BINARY_FILE).exists():
+            with open(cls.BINARY_FILE, "rb") as f:
+                trees = pickle.load(f)
+            print(f"Loaded {len(trees)} trees from binary.")
+            return trees
+
+        # Binary not found → load from JSON
+        path = Path(json_file)
+        if not path.exists():
+            raise FileNotFoundError(f"{json_file} not found")
+
+        with open(path, "r") as f:
+            raw_data = json.load(f)
+
+        trees = []
+        for name, data in raw_data.items():
+            data["name"] = name  # Pydantic requires 'name'
+            if "yield" in data:
+                data["log_yield"] = data.pop("yield")
+            model = TreeModel(**data)
+            trees.append(cls(model))
+
+        # Save binary for next time
+        with open(cls.BINARY_FILE, "wb") as f:
+            pickle.dump(trees, f, protocol=pickle.HIGHEST_PROTOCOL)
+
+        print(f"Loaded {len(trees)} trees from JSON and saved binary.")
+        return trees
+
+# --- Example usage ---
+if __name__ == "__main__":
+    all_trees = Tree.load_trees()
+    for t in all_trees:
+        print(t)
+    size_bytes = asizeof.asizeof(all_trees*1000)
+    size_mb = size_bytes / (1024 ** 2)
+
+    print(f"Tree instance size: {size_mb:.6f} MB")

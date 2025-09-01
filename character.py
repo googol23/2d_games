@@ -21,7 +21,7 @@ class Character(ABC):
         self.energy = energy
         self.current_speed = 0
 
-        self.knowledge = knowledge_tree.KnowledgeTree()
+        self.knowledge = knowledge_tree.KnowledgeTree.LoadTree("knowledge.json")
 
     def age_up(self, years=1):
         self.age += years
@@ -102,8 +102,8 @@ class Human(Walker, Swimmer):
         if quantity > 1:
             self.knowledge.try_unlocks(f"collected_{item.lower()}")
 
-        item_carry_capacity = (self.max_carry_weight() - self.loaded_weight()) // self.knowledge.tree[item]['weight']
-        if item_carry_capacity > self.knowledge.tree[item]['weight']:
+        item_carry_capacity = (self.max_carry_weight() - self.loaded_weight()) // self.knowledge.__getitem__(item).weight
+        if item_carry_capacity > self.knowledge.__getitem__(item).weight:
             self.inventory[item] += item_carry_capacity
 
         return item_carry_capacity
@@ -113,7 +113,7 @@ class Human(Walker, Swimmer):
         return 10 + 2*self.skills['Strength']
 
     def loaded_weight(self) -> float:
-        return np.sum([self.knowledge.tree[item]['weight'] for item in self.inventory])
+        return np.sum([self.knowledge.__getitem__(item).weight for item in self.inventory])
 
 
     def add_task(self, task):
@@ -126,6 +126,7 @@ class Human(Walker, Swimmer):
 
 # Example usage
 if __name__ == "__main__":
+    import time
     ch = logging.StreamHandler()
     ch.setLevel(logging.DEBUG)
     formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -133,14 +134,19 @@ if __name__ == "__main__":
     logger.addHandler(ch)
 
     h = Human("Cody", age=25)
-    print(h)
+    # Simulate random events until all knowledge is unlocked
+    while not h.knowledge.all_unlocked():
+        events = []
+        for item in h.knowledge.known():
+            if h.knowledge.__getitem__(item).crafting is None:
+                events.append(f"collected_{item.lower()}")
+            else:
+                events.append(f"crafted_{'_'.join(item.lower().split())}")
 
-    for i in range(10):
-        random_item = random.choice([item for item in h.knowledge.tree.keys()])
-        item_quantity = random.randint(3,4)
 
-        colledted = h.collect_item(random_item, item_quantity)
-        logger.info(f"Collected {colledted} {random_item}")
-
+        event = random.choice(events)
+        h.knowledge.try_unlocks(event)
+        h.knowledge.visualize("my_knowledge_tree")
+        time.sleep(0.5)
 
 
