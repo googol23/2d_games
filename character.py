@@ -1,9 +1,11 @@
+import knowledge_tree
+import resources
+
+import random
 import numpy as np
 from abc import ABC, abstractmethod
 import logging
-import resources
 from collections import defaultdict
-import knowledge_tree
 
 logger = logging.getLogger(__name__)
 
@@ -76,7 +78,6 @@ class Human(Walker, Swimmer):
     def __init__(self, name, age=0, health=100, speed=10, skills=None):
         super().__init__(name, age, health, speed)
         self.tasks = []  # list of tasks
-        self.loaded_weight = 0
         self.inventory = defaultdict(float)
 
         # Default survival skills if none provided
@@ -97,8 +98,22 @@ class Human(Walker, Swimmer):
         }
         self.skills = skills or default_skills
 
-    def max_carry_weight(self):
+    def collect_item(self, item, quantity=1) -> int:
+        if quantity > 1:
+            self.knowledge.try_unlocks(f"collected_{item.lower()}")
+
+        item_carry_capacity = (self.max_carry_weight() - self.loaded_weight()) // self.knowledge.tree[item]['weight']
+        if item_carry_capacity > self.knowledge.tree[item]['weight']:
+            self.inventory[item] += item_carry_capacity
+
+        return item_carry_capacity
+
+
+    def max_carry_weight(self) -> float:
         return 10 + 2*self.skills['Strength']
+
+    def loaded_weight(self) -> float:
+        return np.sum([self.knowledge.tree[item]['weight'] for item in self.inventory])
 
 
     def add_task(self, task):
@@ -119,23 +134,13 @@ if __name__ == "__main__":
 
     h = Human("Cody", age=25)
     print(h)
-    h.move()            # uses Human's custom move()
-    h.age_up(5)         # aging
-    h.take_damage(30)   # damage system
-    h.add_task({
-        "action" : "G",
-        "item"   : "S",
-        "target" : "H"
-    })
-    import time
-    import random
-    h.knowledge.visualize("my_knowledge_tree")
-    time.sleep(1)
-    events = ["gathered_stone", "gathered_branch"]
-    while( not h.knowledge.all_unlocked()):
-        event = random.choice(events)
-        print(event)
-        h.knowledge.try_unlocks(event)
-        h.knowledge.visualize("my_knowledge_tree")
-        time.sleep(1)
+
+    for i in range(10):
+        random_item = random.choice([item for item in h.knowledge.tree.keys()])
+        item_quantity = random.randint(3,4)
+
+        colledted = h.collect_item(random_item, item_quantity)
+        logger.info(f"Collected {colledted} {random_item}")
+
+
 

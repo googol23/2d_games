@@ -1,151 +1,172 @@
 {
-    "Stone": {"unlocked": true, "prereqs": [], "rules": []},
+    "Stone": {
+        "unlocked": true,
+        "prereqs": [],
+        "rules": [],
+        "weight": 2.0,
+        "description": "A basic stone, the first step to tools."
+    },
     "Flint": {
         "unlocked": false,
         "prereqs": ["Stone"],
         "rules": [
-            {"type": "chance_on_event", "event": "gathered_stone", "chance": 0.3}
+            {"event": "collected_stone", "chance": 0.3}
         ],
-        "weight": 1
+        "weight": 1.0,
+        "description": "Sharp flint — perfect for cutting edges."
     },
 
-    "Branch": {"unlocked": true, "prereqs": [], "rules": [], "weight": 5.0},
+    "Branch": {
+        "unlocked": true,
+        "prereqs": [],
+        "rules": [],
+        "weight": 5.0,
+        "description": "A sturdy branch, useful for many crafts."
+    },
     "Stick": {
         "unlocked": false,
         "prereqs": ["Branch"],
         "rules": [
-            {"type": "chance_on_event", "event": "gathered_branch", "chance": 0.3}
+            {"event": "collected_branch", "chance": 0.3}
         ],
-        "weight": 2.0
+        "weight": 5.0,
+        "description": "A small stick, light and handy."
     },
     "Leaf": {
         "unlocked": false,
         "prereqs": ["Branch"],
         "rules": [
-            {"type": "chance_on_event", "event": "gathered_branch", "chance": 0.3}
+            {"event": "collected_branch", "chance": 0.3}
         ],
-        "weight": 0.2
+        "weight": 0.2,
+        "description": "Leaves — soft, light, and plentiful."
     },
     "Bark": {
         "unlocked": false,
         "prereqs": ["Branch"],
         "rules": [
-            {"type": "chance_on_event", "event": "gathered_branch", "chance": 0.3}
+            {"event": "collected_branch", "chance": 0.3}
         ],
-        "weight": 0.3
+        "weight": 0.3,
+        "description": "Tree bark — tough and fibrous."
     },
     "Fiber": {
         "unlocked": false,
         "prereqs": ["Branch", "Stone"],
         "rules": [
-            {"type": "chance_on_event", "event": "gathered_branch", "chance": 0.1}
+            {"event": "collected_branch", "chance": 0.1}
         ],
-        "weight": 0.1
+        "weight": 0.1,
+        "description": "Plant fibers, useful for making rope."
     },
     "Fiber Rope": {
         "unlocked": false,
         "prereqs": ["Fiber"],
         "rules": [
-            {"type": "chance_on_event", "event": "gathered_branch", "chance": 0.05},
-            {"type": "chance_on_event", "event": "gathered_fiber", "chance": 0.2}
+            {"event": "collected_fiber", "chance": 0.2}
         ],
         "crafting": {
-            "Fiber" : 10
+            "Fiber": 10
         },
-        "weight": 1.0
+        "weight": 1.0,
+        "description": "A rope made of twisted fibers."
     },
     "Fiber Belt": {
         "unlocked": false,
         "prereqs": ["Fiber Rope"],
         "rules": [
-            {"type": "chance_on_event", "event": "crafted_fiber_rope", "chance": 0.05}
+            {"event": "crafted_fiber_rope", "chance": 0.1}
         ],
         "crafting": {
-            "Fiber Rope" : 1
+            "Fiber Rope": 1
         },
-        "weight": 1.0
-
+        "weight": 1.0,
+        "description": "A simple belt woven from rope."
     },
 
     "Stone Blade": {
         "unlocked": false,
         "prereqs": ["Stone", "Flint"],
         "rules": [
-            {"type": "chance_on_event", "event": "gathered_stone", "chance": 0.3}
+            {"event": "collected_stone", "chance": 0.3}
         ],
-        "crafting" : {
-            "Stone" : 1,
-            "Flint" : 1
+        "crafting": {
+            "Stone": 1,
+            "Flint": 1
         },
-        "weight": 1
+        "weight": 1.0,
+        "description": "A sharp blade chipped from stone."
     },
 
     "Wooden Spear": {
         "unlocked": false,
         "prereqs": ["Stone Blade", "Branch"],
         "rules": [
-            {"type": "chance_on_event", "event": "gathered_branch", "chance": 0.3}
+            {"event": "collected_branch", "chance": 0.3}
         ],
-        "crafting" : {
-            "Stone Blade" : 1,
-            "Branch" : 1
+        "crafting": {
+            "Stone Blade": 1,
+            "Branch": 1
         },
-        "weight": 3.5
+        "weight": 3.5,
+        "description": "A wooden spear, your first hunting tool."
     },
-
 
     "Stone Hammer": {
         "unlocked": false,
         "prereqs": ["Stone", "Stick", "Fiber Rope"],
         "rules": [
-            {"type": "chance_on_event", "event": "gathered_stone", "chance": 0.3}
+            {"event": "collected_stone", "chance": 0.3}
         ],
-        "crafting" : {
-            "Stone" : 1,
-            "Stick" : 2,
-            "Fiber Rope" : 1
+        "crafting": {
+            "Stone": 1,
+            "Stick": 2,
+            "Fiber Rope": 1
         },
-        "weight": 5.0
+        "weight": 5.0,
+        "description": "A hammer of stone and wood — good for building."
     },
     "Stone Knife": {
         "unlocked": false,
         "prereqs": ["Stone Blade", "Stick", "Fiber Rope"],
         "rules": [
-            {"type": "chance_on_event", "event": "gathered_stone", "chance": 0.3}
+            {"event": "collected_stone", "chance": 0.3}
         ],
-        "crafting" : {
-            "Stone Blade" : 1,
-            "Stick" : 1,
-            "Fiber Rope" : 1
+        "crafting": {
+            "Stone Blade": 1,
+            "Stick": 1,
+            "Fiber Rope": 1
         },
-        "weight": 3.0
+        "weight": 3.0,
+        "description": "A stone knife for cutting and carving."
     },
     "Stone Axe": {
         "unlocked": false,
         "prereqs": ["Stone Blade", "Stick", "Fiber Rope"],
         "rules": [
-            {"type": "chance_on_event", "event": "gathered_stone", "chance": 0.3}
+            {"event": "collected_stone", "chance": 0.3}
         ],
-        "crafting" : {
-            "Stone Blade" : 1,
-            "Stick" : 2,
-            "Fiber Rope" : 1
+        "crafting": {
+            "Stone Blade": 1,
+            "Stick": 2,
+            "Fiber Rope": 1
         },
-        "weight": 5.0
+        "weight": 5.0,
+        "description": "A stone axe — makes chopping wood easier."
     },
     "Stone Spear": {
         "unlocked": false,
         "prereqs": ["Stone Blade", "Branch", "Fiber Rope"],
         "rules": [
-            {"type": "chance_on_event", "event": "gathered_stone", "chance": 0.3}
+            {"event": "collected_stone", "chance": 0.3}
         ],
-        "crafting" : {
-            "Stone Blade" : 1,
-            "Branch" : 1,
-            "Stick" : 2,
-            "Fiber Rope" : 1
+        "crafting": {
+            "Stone Blade": 1,
+            "Branch": 1,
+            "Stick": 2,
+            "Fiber Rope": 1
         },
-        "weight": 6.0
+        "weight": 6.0,
+        "description": "A heavy spear tipped with stone."
     }
-
 }
