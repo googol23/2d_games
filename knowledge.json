@@ -10,7 +10,7 @@
         "unlocked": false,
         "prereqs": ["Stone"],
         "rules": [
-            {"event": "collected_stone", "chance": 0.3}
+            {"event": "gathering_stone", "chance": 0.3}
         ],
         "weight": 1.0,
         "description": "Sharp flint — perfect for cutting edges."
@@ -27,7 +27,7 @@
         "unlocked": false,
         "prereqs": ["Branch"],
         "rules": [
-            {"event": "collected_branch", "chance": 0.05}
+            {"event": "gathering_branch", "chance": 0.05}
         ],
         "weight": 0.05,
         "nutrition": 1,
@@ -37,7 +37,7 @@
         "unlocked": false,
         "prereqs": ["Branch"],
         "rules": [
-            {"event": "collected_branch", "chance": 0.3}
+            {"event": "gathering_branch", "chance": 0.3}
         ],
         "weight": 5.0,
         "description": "A small stick, light and handy."
@@ -46,7 +46,7 @@
         "unlocked": false,
         "prereqs": ["Branch"],
         "rules": [
-            {"event": "collected_branch", "chance": 0.8}
+            {"event": "gathering_branch", "chance": 0.8}
         ],
         "weight": 0.2,
         "description": "Leaves — soft, light, and plentiful."
@@ -55,7 +55,7 @@
         "unlocked": false,
         "prereqs": ["Branch"],
         "rules": [
-            {"event": "collected_branch", "chance": 0.2}
+            {"event": "gathering_branch", "chance": 0.3}
         ],
         "weight": 0.3,
         "description": "Tree bark — tough and fibrous."
@@ -64,7 +64,7 @@
         "unlocked": false,
         "prereqs": ["Branch", "Stone"],
         "rules": [
-            {"event": "collected_branch", "chance": 0.1}
+            {"event": "gathering_branch", "chance": 0.1}
         ],
         "weight": 0.1,
         "description": "Plant fibers, useful for making rope."
@@ -73,7 +73,7 @@
         "unlocked": false,
         "prereqs": ["Fiber"],
         "rules": [
-            {"event": "collected_fiber", "chance": 0.2}
+            {"event": "gathering_fiber", "chance": 0.2}
         ],
         "crafting": {
             "Fiber": 10
@@ -85,7 +85,7 @@
         "unlocked": false,
         "prereqs": ["Fiber Rope"],
         "rules": [
-            {"event": "crafted_fiber_rope", "chance": 0.1}
+            {"event": "crafting_fiber_rope", "chance": 0.1}
         ],
         "crafting": {
             "Fiber Rope": 1
@@ -98,7 +98,7 @@
         "unlocked": false,
         "prereqs": ["Stone", "Flint"],
         "rules": [
-            {"event": "collected_stone", "chance": 0.3}
+            {"event": "gathering_stone", "chance": 0.3}
         ],
         "crafting": {
             "Stone": 1,
@@ -114,7 +114,7 @@
         "unlocked": false,
         "prereqs": ["Stone Blade", "Branch"],
         "rules": [
-            {"event": "collected_branch", "chance": 0.3}
+            {"event": "gathering_branch", "chance": 0.3}
         ],
         "crafting": {
             "Stone Blade": 1,
@@ -130,7 +130,7 @@
         "unlocked": false,
         "prereqs": ["Stone", "Stick", "Fiber Rope"],
         "rules": [
-            {"event": "collected_stone", "chance": 0.3}
+            {"event": "gathering_stone", "chance": 0.3}
         ],
         "crafting": {
             "Stone": 1,
@@ -146,7 +146,7 @@
         "unlocked": false,
         "prereqs": ["Stone Blade", "Stick", "Fiber Rope"],
         "rules": [
-            {"event": "collected_stone", "chance": 0.3}
+            {"event": "gathering_stone", "chance": 0.3}
         ],
         "crafting": {
             "Stone Blade": 1,
@@ -162,7 +162,7 @@
         "unlocked": false,
         "prereqs": ["Stone Blade", "Stick", "Fiber Rope"],
         "rules": [
-            {"event": "collected_stone", "chance": 0.3}
+            {"event": "gathering_stone", "chance": 0.3}
         ],
         "crafting": {
             "Stone Blade": 1,
@@ -178,7 +178,7 @@
         "unlocked": false,
         "prereqs": ["Stone Blade", "Branch", "Fiber Rope"],
         "rules": [
-            {"event": "collected_stone", "chance": 0.3}
+            {"event": "gathering_stone", "chance": 0.3}
         ],
         "crafting": {
             "Stone Blade": 1,

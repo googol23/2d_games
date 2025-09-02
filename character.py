@@ -1,5 +1,7 @@
 import knowledge_tree
 import resources
+import Skill
+import sys
 
 import random
 import numpy as np
@@ -22,6 +24,7 @@ class Character(ABC):
         self.current_speed = 0
 
         self.knowledge = knowledge_tree.KnowledgeTree.LoadTree("knowledge.json")
+        self.skills_set = Skill.SkillSet.LoadSkillSet(type(self).__name__)
 
     def age_up(self, years=1):
         self.age += years
@@ -80,27 +83,9 @@ class Human(Walker, Swimmer):
         self.tasks = []  # list of tasks
         self.inventory = defaultdict(float)
 
-        # Default survival skills if none provided
-        default_skills = {
-            "Gathering": 0,
-            "Foraging": 0,
-            "Hunting": 0,
-            "Fishing": 0,
-            "Cooking": 0,
-            "FirstAid": 0,
-            "ShelterBuilding": 0,
-            "Firecraft": 0,
-            "Navigation": 0,
-            "Tracking": 0,
-            "Strength": 1,
-            "Intelligence": 1,
-            "Endurance": 1,
-        }
-        self.skills = skills or default_skills
-
     def collect_item(self, item, quantity=1) -> int:
         if quantity > 1:
-            self.knowledge.try_unlocks(f"collected_{item.lower()}")
+            self.handle_event(f"collected_{item.lower()}")
 
         item_carry_capacity = (self.max_carry_weight() - self.loaded_weight()) // self.knowledge.__getitem__(item).weight
         if item_carry_capacity > self.knowledge.__getitem__(item).weight:
@@ -108,9 +93,20 @@ class Human(Walker, Swimmer):
 
         return item_carry_capacity
 
+    def handle_event(self, event: str) -> None:
+        """
+        Dispatch an event to unlock items and improve player skills.
+        Uses each skill's triggers dynamically.
+        """
+        # Step 1: normal unlock handling
+        self.knowledge.try_unlocks(event)
+
+        # Step 2: skill progression from triggers
+        self.skills_set.try_to_learn(event)
+
 
     def max_carry_weight(self) -> float:
-        return 10 + 2*self.skills['Strength']
+        return 10 + 2*self.skills_set['Strength']
 
     def loaded_weight(self) -> float:
         return np.sum([self.knowledge.__getitem__(item).weight for item in self.inventory])
@@ -127,6 +123,7 @@ class Human(Walker, Swimmer):
 # Example usage
 if __name__ == "__main__":
     import time
+    from pympler import asizeof
     ch = logging.StreamHandler()
     ch.setLevel(logging.DEBUG)
     formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -134,19 +131,33 @@ if __name__ == "__main__":
     logger.addHandler(ch)
 
     h = Human("Cody", age=25)
+
     # Simulate random events until all knowledge is unlocked
+
+    size_bytes = asizeof.asizeof(h)
+    size_mb = size_bytes / (1024 ** 2)
+
+    print(f"Human instance size: {size_mb:.6f} MB")
+
     while not h.knowledge.all_unlocked():
         events = []
         for item in h.knowledge.known():
-            if h.knowledge.__getitem__(item).crafting is None:
-                events.append(f"collected_{item.lower()}")
+            if h.knowledge[item].crafting is None:
+                events.append(f"gathering_{item.lower()}")
             else:
-                events.append(f"crafted_{'_'.join(item.lower().split())}")
+                events.append(f"crafting_{'_'.join(item.lower().split())}")
 
-
+        # Pick a random event
         event = random.choice(events)
-        h.knowledge.try_unlocks(event)
-        h.knowledge.visualize("my_knowledge_tree")
-        time.sleep(0.5)
+        # print(event)
 
+        # Handle event: unlock items and increment skills
+        h.handle_event(event)
+
+        # Optional: visualize knowledge tree
+        h.knowledge.visualize("my_knowledge_tree")
+
+        Skill.draw_skills_bitmap(h)
+
+        time.sleep(0.1)
 

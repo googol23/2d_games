@@ -31,6 +31,9 @@ class Tree:
         self.description = model.description
         self.unlocked = model.unlocked
 
+        self.age = self.growth_rate
+        self.hp = (1+0.5*int(self.wood_type == "hardwood")) * self.age
+
     def __repr__(self):
         return f"<Tree {self.name}, {self.wood_type}, harvest in {self.growth_rate} years>"
 
