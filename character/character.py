@@ -1,7 +1,10 @@
 import knowledge_tree
 import resources
 import stats.stats as stats
+from world import WorldObject
+
 import sys
+
 
 import random
 import numpy as np
@@ -13,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 ENERGY_PER_TILE = 1
 # Base class
-class Character(ABC):
+class Character(WorldObject, ABC):
     def __init__(self, name, age=0, health=100, speed=10, energy=100):
         self.name = name
         self.age = age

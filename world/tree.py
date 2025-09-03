@@ -1,4 +1,4 @@
-from .world_element import WorldElement
+from .world_object import WorldObject
 
 import pickle as pk
 from pathlib import Path
@@ -18,7 +18,7 @@ class TreeModel(BaseModel):
     description: str = ""
     unlocked: bool = True
 
-class Tree(WorldElement):
+class Tree(WorldObject):
     project_root = Path(__file__).resolve().parent.parent
     trees_json_file = project_root / "json_files" / "trees.json"
     trees_pkl_file = project_root / "pkl_files" / "trees.pkl"

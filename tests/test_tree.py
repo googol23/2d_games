@@ -3,7 +3,6 @@ from pathlib import Path
 import pickle
 import json
 
-from world.world_element import WorldElement
 from world.tree import Tree, TreeModel
 
 class TestTree(unittest.TestCase):

@@ -1,8 +1,8 @@
 import unittest
 from pathlib import Path
-import random
 
-from character import Human, Walker, Swimmer, Flyer
+from character import Human
+import random
 from drawing import skills_bitmap
 
 class TestCharacter(unittest.TestCase):
