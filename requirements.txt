@@ -6,3 +6,4 @@ pygame
 Pympler
 scipy
 typing_extensions
+numba

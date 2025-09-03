@@ -14,7 +14,6 @@ from collections import defaultdict
 
 logger = logging.getLogger(__name__)
 
-ENERGY_PER_TILE = 1
 # Base class
 class Character(WorldObject, ABC):
     def __init__(self, name, age=0, health=100, speed=10, energy=100):
@@ -42,49 +41,18 @@ class Character(WorldObject, ABC):
     def __str__(self):
         return f"Name: {self.name}, Age: {self.age}, Health: {self.health}, Speed: {self.speed}"
 
-# Movement-focused classes
-class Walker(Character):
-    def __init__(self, name, age=0, health=100, speed=10):
-        super().__init__(name, age, health, speed)
-        self.terrain_factor = {
-            'water' : 0.2,
-            'land' : 1,
-            'air' : 0
-        }
-
-    def move(self):
-        logger.debug(f"{self.name} walks on land.")
 
 
-class Swimmer(Character):
-    def __init__(self, name, age=0, health=100, speed=10):
-        super().__init__(name, age, health, speed)
-        self.terrain_factor = {
-            'water' : 1,
-            'land' : 0.01,
-            'air' : 0
-        }
-    def move(self):
-        logger.debug(f"{self.name} swims in water.")
-
-
-class Flyer(Character):
-    def __init__(self, name, age=0, health=100, speed=10):
-        super().__init__(name, age, health, speed)
-        self.terrain_factor = {
-            'water' : 0.01,
-            'land' : 0.2,
-            'air' : 1
-        }
-    def move(self):
-        logger.debug(f"{self.name} flies in the sky.")
-
-# Human inherits from both Walker and Swimmer
-class Human(Walker, Swimmer):
+class Human(Character):
     def __init__(self, name, age, health, speed):
         super().__init__(name, age, health, speed)
         self.tasks = []  # list of tasks
         self.inventory = defaultdict(float)
+        self.terrain_factor = {
+            'water' : 0.02,
+            'land' : 1.0,
+            'air' : 0
+        }
 
     def collect_item(self, item, quantity=1) -> int:
         if quantity > 1:

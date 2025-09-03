@@ -1,24 +1,24 @@
 [
   {
-    "name": "water_pond",
+    "name": "pond",
     "resources": ["fish", "clay"],
     "vegetation": ["algae"],
     "color": [100, 180, 255]
   },
   {
-    "name": "water_lake",
+    "name": "lake",
     "resources": ["fish", "clay"],
     "vegetation": ["algae"],
     "color": [0, 160, 220]
   },
   {
-    "name": "water_river",
+    "name": "river",
     "resources": ["fish", "stone"],
     "vegetation": ["algae"],
     "color": [0, 120, 200]
   },
   {
-    "name": "water",
+    "name": "ocean",
     "resources": ["fish", "salt"],
     "vegetation": ["seaweed"],
     "color": [0, 70, 150]

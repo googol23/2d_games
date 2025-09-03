@@ -1,17 +1,39 @@
 import json
 import logging
+from pathlib import Path
+from pydantic import BaseModel, ValidationError
 
 logger = logging.getLogger(__name__)
 
-TERRAIN_DATA = {}
+TERRAIN_DATA = {}  # name → Terrain object or dict
 
-class Terrain:
-    def __init__(self, name, color=None, texture=None, resources=None, vegetation=None):
-        self.name = name
-        self.color = color
-        self.texture = texture
-        self.resources = resources or []
-        self.vegetation = vegetation or []
+
+# Minimal validation model
+class Terrain(BaseModel):
+    name: str
+    color: tuple[int, int, int] = (0, 0, 0)
+    texture: str | None = None
+    resources: tuple[str, ...] = ()
+    vegetation: tuple[str, ...] = ()
+
+    class Config:
+        frozen = True  # makes the instance immutable
+
+    # allow color to come as a list
+    @classmethod
+    def parse_color(cls, color):
+        if isinstance(color, list):
+            return tuple(color)
+        return color
+
+    @classmethod
+    def from_dict(cls, data: dict):
+        data = data.copy()
+        if "color" in data:
+            data["color"] = cls.parse_color(data["color"])
+        data["resources"] = tuple(data.get("resources", []))
+        data["vegetation"] = tuple(data.get("vegetation", []))
+        return cls(**data)
 
     def __str__(self):
         return f"{self.name}: Color={self.color}, Resources={self.resources}, Vegetation={self.vegetation}"
@@ -19,31 +41,30 @@ class Terrain:
     def __repr__(self):
         return self.__str__()
 
-def load_terrains_data(json_file_path):
+
+def load_terrains_data(json_file_path: str | None = None):
+
     """
-    Loads terrain data from a JSON file and fills TERRAIN_DATA.
-    The JSON should be a list of objects with keys: name, resources, vegetation, color.
+    Loads terrain data with validation, storing into TERRAIN_DATA for fast access.
     """
     try:
+        if json_file_path is None:
+            project_root = Path(__file__).resolve().parent.parent
+            json_file_path = project_root / "json_files" / "terrains_data.json"
         with open(json_file_path, "r") as f:
             data = json.load(f)
-        logger.debug(f"Loading terrain data from: {data}")
     except Exception as e:
         logger.error(f"Error loading terrain data from {json_file_path}: {e}")
         return
 
+    TERRAIN_DATA.clear()
     for terrain_info in data:
-        logger.debug(f"Loading terrain: {terrain_info}")
-        name = terrain_info.get("name")
-        resources = terrain_info.get("resources", [])
-        vegetation = terrain_info.get("vegetation", "")
-        color = tuple(terrain_info.get("color", (0, 0, 0)))
-        TERRAIN_DATA[name] = Terrain(
-            name=name,
-            color=color,
-            resources=resources,
-            vegetation=vegetation
-        )
+        try:
+            terrain = Terrain.from_dict(terrain_info)
+            TERRAIN_DATA[terrain.name] = terrain
+        except ValidationError as e:
+            logger.error(f"Validation failed for terrain: {terrain_info}. Error: {e}")
+
 
 if __name__ == "__main__":
     logger.setLevel(logging.DEBUG)  # <-- set logger level
@@ -54,5 +75,5 @@ if __name__ == "__main__":
     ch.setFormatter(formatter)
     logger.addHandler(ch)
 
-    load_terrains_data("terrains_data.json")
-    print(len(TERRAIN_DATA))
+    load_terrains_data()
+    print(TERRAIN_DATA)
