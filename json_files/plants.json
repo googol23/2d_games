@@ -1,0 +1,202 @@
+{
+    "Sunflower": {
+        "unlocked": true,
+        "rules": [],
+        "description": "A tall, bright sunflower.",
+        "growth_rate": 80,
+        "water_consumption": 3,
+        "temp_range": [18, 30],
+        "yield": 1,
+        "seed_yield": 50
+    },
+    "Tomato": {
+        "unlocked": false,
+        "rules": [{"event": "collected_sunflower_seed", "chance": 0.5}],
+        "description": "Juicy red tomatoes.",
+        "growth_rate": 70,
+        "water_consumption": 4,
+        "temp_range": [20, 28],
+        "yield": 4,
+        "seed_yield": 20
+    },
+    "Carrot": {
+        "unlocked": false,
+        "rules": [{"event": "collected_tomato_seed", "chance": 0.4}],
+        "description": "Sweet orange root vegetable.",
+        "growth_rate": 75,
+        "water_consumption": 3,
+        "temp_range": [10, 24],
+        "yield": 3,
+        "seed_yield": 30
+    },
+    "Lettuce": {
+        "unlocked": false,
+        "rules": [{"event": "collected_carrot_seed", "chance": 0.3}],
+        "description": "Crisp green lettuce leaves.",
+        "growth_rate": 55,
+        "water_consumption": 3,
+        "temp_range": [12, 22],
+        "yield": 1,
+        "seed_yield": 50
+    },
+    "Cucumber": {
+        "unlocked": false,
+        "rules": [{"event": "collected_lettuce_seed", "chance": 0.4}],
+        "description": "Refreshing cucumbers for salads.",
+        "growth_rate": 65,
+        "water_consumption": 4,
+        "temp_range": [18, 30],
+        "yield": 2,
+        "seed_yield": 10
+    },
+    "Pumpkin": {
+        "unlocked": false,
+        "rules": [{"event": "collected_cucumber_seed", "chance": 0.3}],
+        "description": "Large orange pumpkins.",
+        "growth_rate": 120,
+        "water_consumption": 5,
+        "temp_range": [15, 28],
+        "yield": 1,
+        "seed_yield": 100
+    },
+    "Potato": {
+        "unlocked": false,
+        "rules": [{"event": "collected_pumpkin_seed", "chance": 0.4}],
+        "description": "Nutritious underground tubers.",
+        "growth_rate": 90,
+        "water_consumption": 3,
+        "temp_range": [10, 24],
+        "yield": 4,
+        "seed_yield": 0
+    },
+    "Spinach": {
+        "unlocked": false,
+        "rules": [{"event": "collected_potato_seed", "chance": 0.3}],
+        "description": "Leafy green vegetable.",
+        "growth_rate": 45,
+        "water_consumption": 3,
+        "temp_range": [10, 22],
+        "yield": 2,
+        "seed_yield": 20
+    },
+    "Radish": {
+        "unlocked": false,
+        "rules": [{"event": "collected_spinach_seed", "chance": 0.4}],
+        "description": "Fast-growing red radishes.",
+        "growth_rate": 30,
+        "water_consumption": 2,
+        "temp_range": [10, 20],
+        "yield": 3,
+        "seed_yield": 50
+    },
+    "Pea": {
+        "unlocked": false,
+        "rules": [{"event": "collected_radish_seed", "chance": 0.3}],
+        "description": "Sweet green peas in pods.",
+        "growth_rate": 65,
+        "water_consumption": 3,
+        "temp_range": [12, 24],
+        "yield": 3,
+        "seed_yield": 30
+    },
+    "Corn": {
+        "unlocked": false,
+        "rules": [{"event": "collected_pea_seed", "chance": 0.4}],
+        "description": "Tall cornstalks with golden kernels.",
+        "growth_rate": 100,
+        "water_consumption": 5,
+        "temp_range": [18, 32],
+        "yield": 2,
+        "seed_yield": 300
+    },
+    "Onion": {
+        "unlocked": false,
+        "rules": [{"event": "collected_corn_seed", "chance": 0.3}],
+        "description": "Bulb onions for cooking.",
+        "growth_rate": 100,
+        "water_consumption": 2,
+        "temp_range": [10, 24],
+        "yield": 3,
+        "seed_yield": 200
+    },
+    "Garlic": {
+        "unlocked": false,
+        "rules": [{"event": "collected_onion_seed", "chance": 0.3}],
+        "description": "Pungent garlic bulbs.",
+        "growth_rate": 90,
+        "water_consumption": 2,
+        "temp_range": [10, 22],
+        "yield": 2,
+        "seed_yield": 50
+    },
+    "Beet": {
+        "unlocked": false,
+        "rules": [{"event": "collected_garlic_seed", "chance": 0.4}],
+        "description": "Sweet red beets.",
+        "growth_rate": 70,
+        "water_consumption": 3,
+        "temp_range": [10, 24],
+        "yield": 2,
+        "seed_yield": 50
+    },
+    "Cabbage": {
+        "unlocked": false,
+        "rules": [{"event": "collected_beet_seed", "chance": 0.3}],
+        "description": "Dense leafy heads.",
+        "growth_rate": 85,
+        "water_consumption": 3,
+        "temp_range": [12, 24],
+        "yield": 1,
+        "seed_yield": 100
+    },
+    "Broccoli": {
+        "unlocked": false,
+        "rules": [{"event": "collected_cabbage_seed", "chance": 0.3}],
+        "description": "Edible green flower heads.",
+        "growth_rate": 80,
+        "water_consumption": 3,
+        "temp_range": [12, 25],
+        "yield": 1,
+        "seed_yield": 50
+    },
+    "Bell Pepper": {
+        "unlocked": false,
+        "rules": [{"event": "collected_broccoli_seed", "chance": 0.4}],
+        "description": "Sweet colorful peppers.",
+        "growth_rate": 70,
+        "water_consumption": 3,
+        "temp_range": [18, 30],
+        "yield": 3,
+        "seed_yield": 20
+    },
+    "Chili Pepper": {
+        "unlocked": false,
+        "rules": [{"event": "collected_bell_pepper_seed", "chance": 0.3}],
+        "description": "Hot red chili peppers.",
+        "growth_rate": 75,
+        "water_consumption": 3,
+        "temp_range": [20, 32],
+        "yield": 2,
+        "seed_yield": 15
+    },
+    "Strawberry": {
+        "unlocked": false,
+        "rules": [{"event": "collected_chili_pepper_seed", "chance": 0.4}],
+        "description": "Sweet red strawberries.",
+        "growth_rate": 60,
+        "water_consumption": 3,
+        "temp_range": [15, 28],
+        "yield": 10,
+        "seed_yield": 20
+    },
+    "Blueberry": {
+        "unlocked": false,
+        "rules": [{"event": "collected_strawberry_seed", "chance": 0.3}],
+        "description": "Small antioxidant-rich berries.",
+        "growth_rate": 70,
+        "water_consumption": 3,
+        "temp_range": [12, 25],
+        "yield": 8,
+        "seed_yield": 15
+    }
+}

@@ -1,4 +1,4 @@
-from .character import *
+from .character.character import *
 from .map_data import *
 
 def find_spawn_point(character, grid, min_neighbors=4):

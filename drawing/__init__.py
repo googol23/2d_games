@@ -1,0 +1,1 @@
+from .skill_bitmap import skills_bitmap

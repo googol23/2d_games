@@ -4,7 +4,7 @@ import time
 import heapq
 
 import world
-import character
+import character.character as character
 import task
 import resources
 
