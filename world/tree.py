@@ -3,7 +3,7 @@ from .world_object import WorldObject
 import pickle as pk
 from pathlib import Path
 import json
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from pympler import asizeof
 
@@ -18,6 +18,8 @@ class TreeModel(BaseModel):
     wood_type: str
     description: str = ""
     unlocked: bool = True
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
 
 class Tree(WorldObject):
 

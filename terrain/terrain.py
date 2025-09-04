@@ -1,7 +1,7 @@
 import json
 import logging
 from pathlib import Path
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel, ValidationError, ConfigDict
 
 logger = logging.getLogger(__name__)
 
@@ -16,8 +16,7 @@ class Terrain(BaseModel):
     resources: tuple[str, ...] = ()
     vegetation: tuple[str, ...] = ()
 
-    class Config:
-        frozen = True  # makes the instance immutable
+    model_config = ConfigDict(extra="forbid", frozen=True)
 
     # allow color to come as a list
     @classmethod
