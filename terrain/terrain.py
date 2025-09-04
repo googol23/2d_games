@@ -46,10 +46,12 @@ def load_terrains_data(json_file_path: str | None = None):
     """
     Loads terrain data with validation, storing into TERRAIN_DATA for fast access.
     """
+    logger.info(f"Loading Terrains data ...")
     try:
         if json_file_path is None:
             project_root = Path(__file__).resolve().parent.parent
             json_file_path = project_root / "json_files" / "terrains_data.json"
+            logger.info(f"... resolving json file path : {json_file_path}")
         with open(json_file_path, "r") as f:
             data = json.load(f)
     except Exception as e:
@@ -57,12 +59,14 @@ def load_terrains_data(json_file_path: str | None = None):
         return
 
     TERRAIN_DATA.clear()
+    logger.info(f"Loading terrains data: {len(data)} entries")
     for terrain_info in data:
         try:
             terrain = Terrain.from_dict(terrain_info)
             TERRAIN_DATA[terrain.name] = terrain
+            logger.info(f" {terrain.name:>15}: OK!")
         except ValidationError as e:
-            logger.error(f"Validation failed for terrain: {terrain_info}. Error: {e}")
+            logger.info(f" {terrain.name}: FAILED!. Validation failed for terrain: {terrain_info}. Error: {e}")
 
 
 if __name__ == "__main__":
