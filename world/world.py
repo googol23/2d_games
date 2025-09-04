@@ -2,6 +2,9 @@ import pygame
 import random
 import numpy as np
 
+from scipy.ndimage import label, binary_dilation
+
+
 from .tile import Tile
 from terrain import TERRAIN_DATA, Terrain, load_terrains_data
 from rendering import Camera
@@ -39,6 +42,7 @@ class World:
         self.water_map = np.zeros(shape=(self.world_size_x,self.world_size_y))
 
         # Mark tiles as water if below cutoff
+        logger.info("Filling world with water and creating mountains")
         for x in range(self.world_size_x):
             for y in range(self.world_size_y):
                 tile = self.get_tile(x, y)
@@ -46,10 +50,82 @@ class World:
                 if h < self.water_level:
                     tile.is_water = True
                     self.water_map[x, y] = 1
+                elif h > self.ice_caps_level:
+                    self.set_tile(x,y, Tile(terrain=TERRAIN_DATA["ice_cap"]))
                 elif h > self.mountain_level:
                     self.set_tile(x,y, Tile(terrain=TERRAIN_DATA["mountain"]))
-                if h > self.ice_caps_level:
-                    self.set_tile(x,y, Tile(terrain=TERRAIN_DATA["ice_cap"]))
+
+    def carve_rivers(self):
+        """
+        Generate a river from a random mountain tile.
+        Rivers mouth is  located at:
+        - the largest water cluster or
+        - map edge
+        using A* pathfinding over the height map. The river prefers downhill flow.
+        """
+        logger.debug("Generating river")
+        # --- 1. Identify mountain tiles ---
+        mountain_coords = [(x, y) for x in range(self.world_size)
+                                for x in range(self.world_size)
+                                if self.get_tile(x,y).terrain.name in ["mountain", "ice_cap"]]
+
+        if not mountain_coords:
+            return
+
+        headwaters = random.choice(mountain_coords)
+        logger.info(f"posible headwater fuond at: {headwaters}")
+
+        # --- 2. Identify largest water cluster ---
+        labeled_water, num_features = label(self.water_map)
+
+        if num_features == 0:# Define edges as functions that return a coordinate
+            logger.info("No water to flow into, placing river mouth at world edge.")
+            edges = [
+                lambda: [0, np.random.randint(0, self.world_size_y)],                    # top
+                lambda: [self.world_size_x-1, np.random.randint(0, self.world_size_y)],  # bottom
+                lambda: [np.random.randint(0, self.world_size_x), 0],                    # left
+                lambda: [np.random.randint(0, self.world_size_x), self.world_size_y-1]   # right
+            ]
+
+            # Pick one at random
+            river_mouth = np.array([np.random.choice(edges)()])  # call the selected lambda
+        else:
+            # Find largest water cluster
+            sizes = [(labeled_water==i).sum() for i in range(1, num_features+1)]
+            largest_cluster_label = np.argmax(sizes) + 1
+            river_mouth = np.argwhere(labeled_water == largest_cluster_label)
+
+        # Pick a random tile in the largest water cluster as the target
+        river_mouth = tuple(random.choice(river_mouth))
+        logger.info(f"River mouth set to {river_mouth}")
+
+        # --- 3. Prepare height-based cost matrix ---
+        cost_matrix = np.ones((self.world_size, self.world_size))
+        noise = np.random.rand(self.world_size, self.world_size) * 9.5  # tweak factor to produce meandring
+        cost_matrix += noise
+
+        for y in range(self.world_size):
+            for x in range(self.world_size):
+                # Penalize tiles higher than current headwaters to prefer downhill
+                cost_matrix[y, x] += max(0, self.height_map[y, x] - self.height_map[headwaters[0], headwaters[1]])
+
+        # --- 4. Use pathfinding library ---
+        grid = Grid(matrix=cost_matrix.tolist())
+        start_node = grid.node(headwaters[1], headwaters[0])  # note: Grid uses (x,y)
+        end_node = grid.node(end[1], end[0])
+
+        finder = AStarFinder(diagonal_movement=True)  # allow diagonal river flow
+        path, _ = finder.find_path(start_node, end_node, grid)
+
+        if not path:
+            print("Failed to find river path.")
+            return
+
+        # --- 5. Carve river into map ---
+        for x, y in path:  # path returned as (x,y)
+            if "water" not in self.get_tile(x,y).terrain.name:
+                self.get_tile(x,y) =.name Tile("water_river")
+                self.water_map[y][x] = 1
 
 
     def get_tile(self, x, y):

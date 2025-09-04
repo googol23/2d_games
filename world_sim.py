@@ -7,6 +7,22 @@ from world import find_path, WorldObject, World
 
 from rendering import Camera, Layer
 
+import logging
+logger = logging.getLogger(__name__)
+PROJECT_PREFIXES=("world", "terrain")
+# Create a handler and formatter
+ch = logging.StreamHandler()
+ch.setLevel(logging.DEBUG)
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+ch.setFormatter(formatter)
+
+# Iterate over all existing loggers
+for name, logger_obj in logging.root.manager.loggerDict.items():
+    if isinstance(logger_obj, logging.Logger) and name.startswith(PROJECT_PREFIXES):
+        logger_obj.addHandler(ch)
+        logger_obj.setLevel(logging.DEBUG)
+
+
 # --- Configuration ---
 TILE_SIZE = 10  # base tile size in pixels
 FPS = 60
@@ -17,6 +33,7 @@ SCREEN_WIDTH, SCREEN_HEIGHT = 1000, 1000  # display resolution
 # --- Generate World map ---
 my_world = World(100,100)
 my_world.generate()
+
 
 import pygame
 
