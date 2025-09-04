@@ -7,6 +7,9 @@ from terrain import TERRAIN_DATA, Terrain, load_terrains_data
 from rendering import Camera
 from .topology import generate_topological_map
 
+import logging
+logger = logging.getLogger(__name__)
+
 class World:
     def __init__(self, world_size_x: int, world_size_y: int):
         self.world_size_x = world_size_x
@@ -14,20 +17,23 @@ class World:
         self.height_map = None
 
         # Pre-allocate tiles in a flat list
+        logger.info("Creating new World ...")
+        logger.info(" ... generating world tiles")
         size = world_size_x * world_size_y
         self.tiles = [Tile() for _ in range(size)]
-        
+
     def __str__(self):
         return f"World: size_x = {self.world_size_x}, size_y = {self.world_size_y}"
 
     def generate(self):
         load_terrains_data()
+
         n_of_peaks = random.randint(10,100)
         self.height_map = generate_topological_map(self.world_size_x, self.world_size_y, n_of_peaks=n_of_peaks)
 
-        water_level    = 0.3
-        mountain_level = 0.80
-        ice_caps_level = 0.95
+        self.water_level    = 0.3
+        self.mountain_level = 0.80
+        self.ice_caps_level = 0.95
 
         # Create a binary map: 1 for water, 0 otherwise
         self.water_map = np.zeros(shape=(self.world_size_x,self.world_size_y))
@@ -37,12 +43,12 @@ class World:
             for y in range(self.world_size_y):
                 tile = self.get_tile(x, y)
                 h = self.height_map[x, y]
-                if h < water_level:
+                if h < self.water_level:
                     tile.is_water = True
                     self.water_map[x, y] = 1
-                elif h > mountain_level:
+                elif h > self.mountain_level:
                     self.set_tile(x,y, Tile(terrain=TERRAIN_DATA["mountain"]))
-                if h > ice_caps_level:
+                if h > self.ice_caps_level:
                     self.set_tile(x,y, Tile(terrain=TERRAIN_DATA["ice_cap"]))
 
 
