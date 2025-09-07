@@ -24,7 +24,7 @@ def generate_topological_map(width, height, n_of_peaks=5, seed=None):
 
     centers = np.random.rand(n_of_peaks, 2).astype(np.float32)
     sigmas = np.random.uniform(0.05, 0.2, (n_of_peaks, 2)).astype(np.float32)
-    amplitudes = np.random.uniform(-1, 1, n_of_peaks).astype(np.float32)
+    amplitudes = np.random.uniform(0, 1, n_of_peaks).astype(np.float32)
 
     Z = compute_gaussians(X, Y, centers, sigmas, amplitudes)
     return Z
@@ -40,6 +40,8 @@ def visualize_topological_map(topology, cmap="terrain", debug_name=None, show=Fa
 
     if debug_name is not None:
         plt.savefig(f"{debug_name}.png", bbox_inches="tight", pad_inches=0)
+    elif not show:
+        plt.savefig(f"topological_map.png", bbox_inches="tight", pad_inches=0)
 
     if show:
         plt.show()

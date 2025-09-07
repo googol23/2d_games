@@ -24,14 +24,13 @@ for name, logger_obj in logging.root.manager.loggerDict.items():
 
 
 # --- Configuration ---
-TILE_SIZE = 10  # base tile size in pixels
 FPS = 60
-SPEED = 5  # tiles/sec
+SPEED = 50  # tiles/sec
 
-SCREEN_WIDTH, SCREEN_HEIGHT = 1000, 1000  # display resolution
+SCREEN_WIDTH, SCREEN_HEIGHT = 500, 500  # display resolution
 
 # --- Generate World map ---
-my_world = World(100,100)
+my_world = World(1000,1000)
 my_world.generate()
 
 
@@ -41,16 +40,18 @@ import pygame
 pygame.init()
 
 # Screen size
-WIDTH, HEIGHT = 640, 480
+WIDTH, HEIGHT = 1000, 1000
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Tile-Based Survival Game")
 clock = pygame.time.Clock()
 
 # Tile size
-TILE_SIZE = 5
+TILE_SIZE = 1
 
 # Initialize camera
 camera = Camera(0, 0, WIDTH, HEIGHT, tile_size=TILE_SIZE)
+
+world_surface = pygame.Surface((WIDTH, HEIGHT))
 
 # Initialize layers
 objects_layer = Layer(WIDTH, HEIGHT, transparent=True)  # trees, stones, resources
@@ -88,12 +89,18 @@ while running:
     if moved:
         player.needs_redraw = True
 
+    if keys[pygame.K_KP_ENTER]:
+        my_world.generate()
+
+    world_surface.fill((0, 0, 0))
+    my_world.render(world_surface, camera)
+
     # Draw all layers
-    world_surface = my_world.render(pygame.Surface((WIDTH, HEIGHT)), camera)
     objects_layer.draw(camera)
     movables_layer.draw(camera)
 
     # Composite layers to screen
+    screen.blit(world_surface, (0, 0))
     screen.blit(objects_layer.surface, (0, 0))
     screen.blit(movables_layer.surface, (0, 0))
 
