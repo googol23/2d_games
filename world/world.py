@@ -300,10 +300,10 @@ class World:
         tile_size = camera.tile_size
 
         # Cull: compute visible bounds once
-        start_x = max(camera.x // tile_size, 0)
-        end_x = min((camera.x + camera.width) // tile_size + 1, self.world_size_x)
-        start_y = max(camera.y // tile_size, 0)
-        end_y = min((camera.y + camera.height) // tile_size + 1, self.world_size_y)
+        start_x = max(int(camera.x // tile_size), 0)
+        end_x   = min(int((camera.x + camera.width) // tile_size + 1), self.world_size_x)
+        start_y = max(int(camera.y // tile_size), 0)
+        end_y   = min(int((camera.y + camera.height) // tile_size + 1), self.world_size_y)
 
         # Loop only over visible tiles
         for y in range(start_y, end_y):
@@ -331,4 +331,3 @@ class World:
                         (87, 87, 87),
                         pygame.Rect(screen_x, screen_y, tile_size, tile_size),
                     )
-        return surface
