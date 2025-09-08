@@ -87,7 +87,7 @@ class World:
              for x in range(self.world_size_x)]
         )
         attempts = 0
-        while attempts < 10 and self.carve_rivers() == 0:
+        while attempts < 10 and self.carve_river_fast() == 0:
             attempts += 1
 
     def carve_rivers(self):
@@ -108,8 +108,8 @@ class World:
         if not mountain_coords:
             return 0
 
-        headwaters = random.choice(mountain_coords)
-        logger.info(f"Headwater at: {headwaters}")
+        headwater = random.choice(mountain_coords)
+        logger.info(f"Headwater at: {headwater}")
 
         # --- 2. Find largest water cluster or fallback to edge ---
         labeled_water, num_features = label(self.water_map)
@@ -137,19 +137,19 @@ class World:
 
         # --- 3. BFS pathfinding (downhill/flat only) ---
         directions = [(1, 0), (-1, 0), (0, 1), (0, -1)]
-        visited = {headwaters}
+        visited = {headwater}
         parent = {}
-        queue = deque([headwaters])
+        queue = deque([headwater])
         path = []
 
         while queue:
             x, y = queue.popleft()
             if (x, y) == river_mouth:
                 cur = river_mouth
-                while cur != headwaters:
+                while cur != headwater:
                     path.append(cur)
                     cur = parent[cur]
-                path.append(headwaters)
+                path.append(headwater)
                 path.reverse()
                 break
 
@@ -175,6 +175,122 @@ class World:
                 self.water_map[x, y] = 1
 
         return len(path)
+
+    def carve_river_fast(self, max_slope=0.05, lateral_chance=0.5, max_attempts=None):
+        """
+        Generates a realistic meandering river from a mountain/ice headwater to water or map edge.
+        Optimized for large maps (up to 10k x 10k) using iterative gradient descent with random meanders.
+
+        Parameters:
+            max_slope (float): Maximum allowed slope per tile (0-1) to respect realism.
+            lateral_chance (float): Chance to take a lateral step to induce meanders.
+            max_attempts (int): Max steps to prevent infinite loops.
+
+        Returns:
+            int: Number of river tiles carved.
+        """
+        logger.debug("Generating river (fast)")
+        max_attempts = max(self.world_size_x, self.world_size_y) / lateral_chance
+
+        # --- 1. Pick headwater from mountain tiles ---
+        mountain_coords = [
+            (x, y)
+            for x in range(self.world_size_x)
+            for y in range(self.world_size_y)
+            if self.get_tile(x, y).terrain
+            and self.get_tile(x, y).terrain.name in ["mountain", "ice_cap"]
+        ]
+        if not mountain_coords:
+            return 0
+
+        headwater = random.choice(mountain_coords)
+        logger.info(f"Headwater at: {headwater}")
+
+        # --- 2. Determine river target ---
+        labeled_water, num_features = label(self.water_map)
+        if num_features == 0:
+            # Fallback: random map edge
+            edges = [
+                lambda: (0, np.random.randint(self.world_size_y)),
+                lambda: (self.world_size_x - 1, np.random.randint(self.world_size_y)),
+                lambda: (np.random.randint(self.world_size_x), 0),
+                lambda: (np.random.randint(self.world_size_x), self.world_size_y - 1),
+            ]
+            target = random.choice(edges)()
+        else:
+            sizes = [(labeled_water == i).sum() for i in range(1, num_features + 1)]
+            largest_label = np.argmax(sizes) + 1
+            candidates = np.argwhere(labeled_water == largest_label)
+            target = tuple(candidates[np.random.randint(len(candidates))][::-1])  # (x, y)
+        logger.info(f"River target at: {target}")
+
+        # --- 3. Gradient descent with meanders ---
+        river_path = [headwater]
+        current = headwater
+        attempts = 0
+
+        directions = [(1, 0), (-1, 0), (0, 1), (0, -1),
+                    (1, 1), (1, -1), (-1, 1), (-1, -1)]  # 8-way movement
+
+        while current != target and attempts < max_attempts:
+            x, y = current
+            neighbors = []
+
+            for dx, dy in directions:
+                nx, ny = x + dx, y + dy
+                if 0 <= nx < self.world_size_x and 0 <= ny < self.world_size_y:
+                    current_height = self.height_map[y, x]
+                    neighbor_height = self.height_map[ny, nx]
+                    slope = (current_height - neighbor_height) / max(1, np.hypot(dx, dy))
+                    if slope >= 0 and slope <= max_slope:
+                        neighbors.append((nx, ny, slope))
+
+            if not neighbors:
+                # If stuck, allow the least uphill neighbor within slope tolerance
+                fallback = []
+                for dx, dy in directions:
+                    nx, ny = x + dx, y + dy
+                    if 0 <= nx < self.world_size_x and 0 <= ny < self.world_size_y:
+                        current_height = self.height_map[y, x]
+                        neighbor_height = self.height_map[ny, nx]
+                        slope = (current_height - neighbor_height) / max(1, np.hypot(dx, dy))
+                        if slope <= max_slope:  # small uphill allowed
+                            fallback.append((nx, ny, slope))
+                if fallback:
+                    neighbors = fallback
+                else:
+                    break  # No valid moves, end river
+
+            # Introduce randomness for meanders
+            if np.random.rand() < lateral_chance:
+                # Choose a lateral or less downhill neighbor
+                neighbors.sort(key=lambda n: n[2])  # sort by slope ascending
+                lateral_candidates = [n for n in neighbors if n[2] < max_slope / 2]
+                if lateral_candidates:
+                    next_tile = lateral_candidates[np.random.randint(len(lateral_candidates))]
+                else:
+                    next_tile = neighbors[np.random.randint(len(neighbors))]
+            else:
+                # Normally pick steepest downhill
+                next_tile = max(neighbors, key=lambda n: n[2])
+
+            current = (next_tile[0], next_tile[1])
+            river_path.append(current)
+            attempts += 1
+
+            # Early exit if we reach existing water
+            if self.get_tile(*current).is_water:
+                break
+
+        # --- 4. Carve river tiles ---
+        logger.info(f"Carving river of length {len(river_path)}")
+        for x, y in river_path:
+            tile = self.get_tile(x, y)
+            if not tile.is_water:
+                self.set_tile(x, y, Tile(is_water=True, terrain=TERRAIN_DATA["river"]))
+                self.water_map[y, x] = 1  # consistent indexing
+
+        return len(river_path)
 
     def render(self, surface: pygame.Surface, camera: Camera):
         """
