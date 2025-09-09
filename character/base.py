@@ -1,7 +1,7 @@
 import knowledge_tree
 import resources
 import stats.stats as stats
-from world import WorldObject
+from agent import Agent
 
 import sys
 
@@ -15,8 +15,9 @@ from collections import defaultdict
 logger = logging.getLogger(__name__)
 
 # Base class
-class Character(WorldObject, ABC):
-    def __init__(self, name, age=0, health=100, speed=10, energy=100):
+class Character(Agent, ABC):
+    def __init__(self, name:str, age:int=0, health:int=100, speed:float=1, energy:float=100):
+        super().__init__(speed=speed)
         self.name = name
         self.age = age
         self.health = health
@@ -44,7 +45,7 @@ class Character(WorldObject, ABC):
 
 
 class Human(Character):
-    def __init__(self, name, age, health, speed):
+    def __init__(self, name:str, age:int, health:float, speed:float):
         super().__init__(name, age, health, speed)
         self.tasks = []  # list of tasks
         self.inventory = defaultdict(float)
@@ -131,4 +132,3 @@ if __name__ == "__main__":
         stats.draw_skills_bitmap(h)
 
         time.sleep(0.1)
-

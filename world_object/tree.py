@@ -1,11 +1,9 @@
-from .world_object import WorldObject
+from world_object import WorldObject
 
+import json
 import pickle as pk
 from pathlib import Path
-import json
 from pydantic import BaseModel, ConfigDict
-
-from pympler import asizeof
 
 TREE_DATA = {}
 class TreeModel(BaseModel):
@@ -44,35 +42,44 @@ def load_trees(filepath: str | None = None):
     """
     Load trees from Pickle binary if it exists, otherwise from JSON.
     Returns a list of Tree instances.
+    If 'filepath' is provided, JSON is always loaded (ignoring binary).
     """
     project_root = Path(__file__).resolve().parent.parent
     trees_json_file = project_root / "json_files" / "trees.json"
     trees_pkl_file = project_root / "pkl_files" / "trees.pkl"
-    if Path(trees_pkl_file).exists():
+
+    trees = []
+
+    # Only try binary if no JSON filepath is provided
+    if filepath is None and Path(trees_pkl_file).exists():
         try:
             with open(trees_pkl_file, "rb") as f:
                 trees = pk.load(f)
             print(f"Loaded {len(trees)} trees from binary.")
             return trees
         except Exception as e:
-            print(e)
+            print(f"Failed to load binary: {e}")
 
-    # Binary not found → load from JSON
+    # Load from JSON
     filepath = filepath or trees_json_file
-
     with open(filepath, "r") as f:
         raw_data = json.load(f)
 
-    trees = []
     for name, data in raw_data.items():
-        data["name"] = name  # Pydantic requires 'name'
+        data["name"] = name
         if "yield" in data:
             data["log_yield"] = data.pop("yield")
+
         model = TreeModel(**data)
         TREE_DATA[name] = model
 
+        tree_instance = Tree(model)
+        trees.append(tree_instance)
+
     # Save binary for next time
+    trees_pkl_file.parent.mkdir(exist_ok=True)
     with open(trees_pkl_file, "wb") as f:
         pk.dump(trees, f, protocol=pk.HIGHEST_PROTOCOL)
 
     print(f"Loaded {len(trees)} trees from JSON and saved binary.")
+    return trees

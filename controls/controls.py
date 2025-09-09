@@ -25,3 +25,5 @@ ZOOM_OUT_KEYS = [pygame.K_MINUS, pygame.K_KP_MINUS]
 # Other actions
 TOGGLE_OVERLAY_KEY = pygame.K_F1
 REGENERATE_WORLD_KEY = pygame.K_KP_ENTER
+
+PAUSE_GAME_KEY = pygame.K_F10

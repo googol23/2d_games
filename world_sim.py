@@ -1,9 +1,14 @@
 import pygame
 import logging
-from world import WorldObject, World
-from rendering import Camera, Layer
+
 import controls
+from world_object import WorldObject
+from world import World
+from manager import Manager
+from rendering import Camera, Layer
 from minimap import MiniMap
+from character import Human
+
 # --- Logging setup ---
 logger = logging.getLogger(__name__)
 PROJECT_PREFIXES = ("world", "terrain")
@@ -31,6 +36,17 @@ MAX_TILE_SIZE = 100
 my_world = World(WORLD_WIDTH, WORLD_HEIGHT)
 my_world.generate()
 
+# --- Initialize agents ---
+rowan = Human("Rowan", age=20,health=100,speed=1)
+clara = Human("Clara", age=20,health=100,speed=1)
+
+all_agents = [rowan, clara]
+act_agents = []
+
+# --- Initialize Manager ---
+manager = Manager(world=my_world, agents=all_agents)
+manager.resume()
+
 # --- Initialize Pygame ---
 pygame.init()
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
@@ -50,7 +66,7 @@ movables_layer = Layer(SCREEN_WIDTH, SCREEN_HEIGHT, transparent=True)
 
 # --- Example objects ---
 objects_layer.add(WorldObject(2, 2))  # tree
-movables_layer.add(WorldObject(5, 5)) # player
+# movables_layer.add()
 
 # --- Overlay ---
 show_overlay = False
@@ -66,19 +82,14 @@ while running:
                 show_overlay = not show_overlay
             if event.key == controls.REGENERATE_WORLD_KEY:
                 my_world.generate()
+            if event.key == controls.PAUSE_GAME_KEY:
+                manager.toggle_pause()
+                print("game paused" if manager.paused else "game resumed")
+
+    # Update the world and agents
+    manager.update()  # dt calculated automatically
 
     keys = pygame.key.get_pressed()
-    player = movables_layer.objects[0]
-
-    # --- Player movement ---
-    player_moved = False
-    for key, (dx, dy) in controls.MOVEMENT_KEYS.items():
-        if keys[key]:
-            player.x += dx
-            player.y += dy
-            player_moved = True
-    if player_moved:
-        player.needs_redraw = True
 
     # --- Camera movement (WASD + mouse-edge) ---
     # WASD
@@ -92,15 +103,15 @@ while running:
     mouse_x, mouse_y = pygame.mouse.get_pos()
     camera.edge_pan(mouse_x, mouse_y)
 
-    # Click on minimap handling
-    if pygame.mouse.get_pressed()[0]:
-        minimap.handle_click(pygame.mouse.get_pos())
-
     # --- Zoom ---
     if any(keys[key] for key in controls.ZOOM_IN_KEYS):
         camera.tile_size = min(camera.tile_size + ZOOM_STEP, MAX_TILE_SIZE)
     if any(keys[key] for key in controls.ZOOM_OUT_KEYS):
         camera.tile_size = max(camera.tile_size - ZOOM_STEP, MIN_TILE_SIZE)
+
+    # Click on minimap handling
+    if pygame.mouse.get_pressed()[0]:
+        minimap.handle_click(pygame.mouse.get_pos())
 
     # --- Render ---
     world_surface.fill((0, 0, 0))
@@ -113,6 +124,10 @@ while running:
     screen.blit(world_surface, (0, 0))
     screen.blit(objects_layer.surface, (0, 0))
     screen.blit(movables_layer.surface, (0, 0))
+
+    text_surface = pygame.font.SysFont(None, 20).render(f"{manager.days:.2f}", True, (255,0,0))
+    screen.blit(text_surface, (0, 0))
+
     # Draw minimap on screen
     screen.blit(minimap.draw(), minimap.position)
 

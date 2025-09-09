@@ -1,0 +1,1 @@
+from .world_object import WorldObject

@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from world.tree import Tree, TreeModel, load_trees
+from world_object.tree import Tree, TreeModel, load_trees
 
 
 def test_tree_initialization_and_repr():
