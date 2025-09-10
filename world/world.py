@@ -23,11 +23,29 @@ class World:
         self.world_size_x = world_size_x
         self.world_size_y = world_size_y
         self.height_map = None
+        self.higest_peak:float = 1000
 
         logger.info("Creating new World ...")
         logger.info(" ... pre-allocating world tiles")
         size = world_size_x * world_size_y
         self.tiles = [Tile() for _ in range(size)]
+        self.obstacle_map = np.zeros((self.world_size_y, self.world_size_x), dtype=bool)
+
+    def generate_obstacles(self, density: float = 0.05, seed: int | None = None):
+        """
+        Generate random obstacles.
+        density: fraction of tiles to block [0..1].
+        seed: random seed for reproducibility.
+        """
+        if seed is not None:
+            random.seed(seed)
+
+        self.obstacle_map = np.zeros((self.world_size_y, self.world_size_x), dtype=bool)
+        num_obstacles = int(self.world_size_x * self.world_size_y * density)
+        for _ in range(num_obstacles):
+            x = random.randint(0, self.world_size_x - 1)
+            y = random.randint(0, self.world_size_y - 1)
+            self.obstacle_map[y, x] = True
 
     def get_tile(self, x: int, y: int) -> Tile:
         """Retrieves a tile at the given coordinates."""

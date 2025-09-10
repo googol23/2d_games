@@ -65,8 +65,8 @@ objects_layer = Layer(SCREEN_WIDTH, SCREEN_HEIGHT, transparent=True)
 movables_layer = Layer(SCREEN_WIDTH, SCREEN_HEIGHT, transparent=True)
 
 # --- Example objects ---
-objects_layer.add(WorldObject(2, 2))  # tree
-# movables_layer.add()
+objects_layer.objects = manager.static_objects
+movables_layer.objects = manager.agents
 
 # --- Overlay ---
 show_overlay = False

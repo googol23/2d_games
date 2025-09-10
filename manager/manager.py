@@ -9,7 +9,21 @@ from functools import cached_property
 DAY_DURATION_S = 100
 DAYS_PER_YEAR = 6
 
+# ---------------- Selection ----------------
+class SelectionManager:
+    def __init__(self):
+        self.selected = set()
 
+    def select(self, agent:Agent):
+        self.selected.add(agent.id)
+
+    def deselect(self, agent:Agent):
+        self.selected.discard(agent.id)
+
+    def clear(self):
+        self.selected.clear()
+
+# ----------------- Manager -----------------
 class Manager:
     """Handles the updating of dynamic elements in the world.
 
@@ -26,7 +40,7 @@ class Manager:
 
         Args:
             world (World, optional): Reference to the game world.
-            agents (list[Character], optional): List of dynamic agents.
+            agents (list[Agents]): List of dynamic agents.
             static_objects (list[WorldObject], optional): List of static world objects.
         """
         self.world:World = world
@@ -84,6 +98,11 @@ class Manager:
         """
         return self.day_counter + self.session_time / DAY_DURATION_S
 
+    def broadcast(self, command, agent_ids):
+        for aid in agent_ids:
+            if aid in self.agents:
+                self.agents[aid].assign_command(command)
+
     def update_static(self):
         """
         Update static objects like plants and trees based on session time.
@@ -130,3 +149,4 @@ class Manager:
         # Update world
         self.update_static()
         self.update_agents(dt)
+
