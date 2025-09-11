@@ -4,7 +4,7 @@ import itertools
 
 class WorldObject:
     def __init__(self, x, y):
-        self._id_gen = itertools.count()
+        self.id = itertools.count()
         self.x = float(x)
         self.y = float(y)
         self.needs_redraw = True

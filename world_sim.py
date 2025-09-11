@@ -4,11 +4,12 @@ import logging
 import controls
 from world_object import WorldObject
 from world import World
-from manager import Manager
 from rendering import Camera, Layer
 from minimap import MiniMap
 from character import Human
 
+from manager import Manager, SelectionManager
+from pygame_interface import PygameSelectionController
 # --- Logging setup ---
 logger = logging.getLogger(__name__)
 PROJECT_PREFIXES = ("world", "terrain")
@@ -39,6 +40,8 @@ my_world.generate()
 # --- Initialize agents ---
 rowan = Human("Rowan", age=20,health=100,speed=1)
 clara = Human("Clara", age=20,health=100,speed=1)
+rowan.x, rowan.y = 10, 10
+clara.x, clara.y = 20, 20
 
 all_agents = [rowan, clara]
 act_agents = []
@@ -46,6 +49,9 @@ act_agents = []
 # --- Initialize Manager ---
 manager = Manager(world=my_world, agents=all_agents)
 manager.resume()
+
+selection = SelectionManager()
+pygame_selector = PygameSelectionController(selection_manager=selection)
 
 # --- Initialize Pygame ---
 pygame.init()
@@ -66,7 +72,7 @@ movables_layer = Layer(SCREEN_WIDTH, SCREEN_HEIGHT, transparent=True)
 
 # --- Example objects ---
 objects_layer.objects = manager.static_objects
-movables_layer.objects = manager.agents
+movables_layer.objects = manager.get_agents()
 
 # --- Overlay ---
 show_overlay = False
@@ -74,7 +80,12 @@ show_overlay = False
 # --- Main loop ---
 running = True
 while running:
-    for event in pygame.event.get():
+    events = pygame.event.get()
+
+    # update selection
+    pygame_selector.handle_events(events, manager.get_agents())
+
+    for event in events:
         if event.type == pygame.QUIT:
             running = False
         elif event.type == pygame.KEYDOWN:
@@ -86,8 +97,6 @@ while running:
                 manager.toggle_pause()
                 print("game paused" if manager.paused else "game resumed")
 
-    # Update the world and agents
-    manager.update()  # dt calculated automatically
 
     keys = pygame.key.get_pressed()
 
@@ -99,7 +108,6 @@ while running:
             camera.y += dy * CAMERA_SPEED_TILES
 
     # Mouse-edge panning
-    """Move camera if mouse is near screen edges."""
     mouse_x, mouse_y = pygame.mouse.get_pos()
     camera.edge_pan(mouse_x, mouse_y)
 
@@ -113,17 +121,26 @@ while running:
     if pygame.mouse.get_pressed()[0]:
         minimap.handle_click(pygame.mouse.get_pos())
 
+    # Update the world and agents
+    manager.update()  # dt calculated automatically
+
+    for agent in manager.get_agents():
+        color = (0,222,0) if agent.id in selection.selected else (200,20,20)
+        agent.dummy_render_color = color
+
     # --- Render ---
     world_surface.fill((0, 0, 0))
     my_world.render(world_surface, camera)
     objects_layer.draw(camera)
     movables_layer.draw(camera)
 
+    pygame_selector.draw_drag_box(movables_layer.surface)
 
     # --- Composite layers ---
     screen.blit(world_surface, (0, 0))
     screen.blit(objects_layer.surface, (0, 0))
     screen.blit(movables_layer.surface, (0, 0))
+
 
     text_surface = pygame.font.SysFont(None, 20).render(f"{manager.days:.2f}", True, (255,0,0))
     screen.blit(text_surface, (0, 0))
