@@ -6,6 +6,8 @@ from character import Character, Human
 from agent import Agent
 from functools import cached_property
 
+import logging
+logger = logging.getLogger("manager")
 DAY_DURATION_S = 100
 DAYS_PER_YEAR = 6
 
@@ -16,6 +18,7 @@ class SelectionManager:
 
     def select(self, agent:Agent):
         self.selected.add(agent.id)
+        logger.info(f"Agent selected: {agent.id}, {agent.state}")
 
     def deselect(self, agent:Agent):
         self.selected.discard(agent.id)

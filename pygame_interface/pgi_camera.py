@@ -1,5 +1,5 @@
 import pygame
-from rendering import Camera
+from camera import Camera
 from controls import CAMERA_KEYS, ZOOM_KEYS, PAN_EDGE_SIZE
 
 class PGICameraControl:

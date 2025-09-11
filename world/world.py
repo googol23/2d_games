@@ -6,7 +6,7 @@ from collections import deque
 from scipy.ndimage import label
 from .tile import Tile
 from terrain import TERRAIN_DATA, load_terrains_data
-from rendering import Camera
+from camera import Camera
 from .topology import generate_topological_map, visualize_topological_map
 
 import logging
@@ -24,6 +24,7 @@ class World:
         self.world_size_y = world_size_y
         self.height_map = None
         self.higest_peak:float = 1000
+        self.needs_redraw = True
 
         logger.info("Creating new World ...")
         logger.info(" ... pre-allocating world tiles")
@@ -317,6 +318,9 @@ class World:
         """
         tile_size = camera.tile_size
 
+         # Fill background so out-of-bounds areas don't leave artifacts
+        surface.fill((0, 0, 0))  # or ocean blue, or whatever makes sense
+
         # Cull: compute visible bounds once
         start_x = max(int(camera.x), 0)
         end_x   = min(int(camera.x + camera.width_tls + 1), self.world_size_x)
@@ -326,10 +330,10 @@ class World:
         # Loop only over visible tiles
         for y in range(start_y, end_y):
             row_offset = y * self.world_size_x
-            screen_y = int(y * tile_size - camera.y * tile_size)
+            screen_y = round(y * tile_size - camera.y * tile_size)
             for x in range(start_x, end_x):
                 tile = self.tiles[row_offset + x]
-                screen_x = int(x * tile_size - camera.x * tile_size)
+                screen_x = round(x * tile_size - camera.x * tile_size)
 
                 if tile.terrain:
                     if tile.terrain.texture:

@@ -4,7 +4,7 @@ import time
 import heapq
 
 import world
-import character.base as base
+import character.character as character
 import task
 import resources
 
@@ -150,7 +150,7 @@ my_world.generate(
 )
 
 for i in range(1):
-    h = base.Human(f"C{i}", age=20+i)
+    h = character.Human(f"C{i}", age=20+i)
     my_world.add_character(h)
 
 pygame.init()

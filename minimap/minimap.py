@@ -9,7 +9,7 @@ class MiniMap:
         self.surface = pygame.Surface((size, size))
         self.needs_redraw = True
 
-    def draw(self):
+    def render(self):
         if self.needs_redraw:
             self._render_minimap()
             self.needs_redraw = False

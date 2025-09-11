@@ -1,6 +1,9 @@
 import pygame
 from  manager import SelectionManager
-from rendering import Camera
+from camera import Camera
+
+import logging
+logger = logging.getLogger("pgi")
 
 class PGISelectionController:
     def __init__(self, selection_manager: SelectionManager, camera: Camera, box_size: float=20):
@@ -49,14 +52,14 @@ class PGISelectionController:
                         self.selection_manager.select_by_box(
                             agents, start_world, end_world, multi=multi
                         )
-                        print(f"Calling select_by_box(({self.drag_start}){start_world}, ({self.drag_end}){end_world})")
+                        logger.info(f"Calling select_by_box(({self.drag_start}){start_world}, ({self.drag_end}){end_world})")
                     else:
                         # convert click position to world coords
                         end_world = self.camera.screen_to_world(*self.drag_end)
                         self.selection_manager.select_by_click(
                             agents, end_world, box_size=self.box_size, multi=multi
                         )
-                        print(f"Calling select_by_click({end_world})")
+                        logger.info(f"Calling select_by_click({end_world})")
                 self.dragging = False
 
     def draw_drag_box(self, surface):
