@@ -12,19 +12,14 @@ DAY_DURATION_S = 100
 DAYS_PER_YEAR = 6
 
 # ---------------- Selection ----------------
-class SelectionManager:
-    def __init__(self):
-        self.selected = set()
+class SelectionManager(set):
 
     def select(self, agent:Agent):
-        self.selected.add(agent.id)
+        self.add(agent.id)
         logger.info(f"Agent selected: {agent.id}, {agent.state}")
 
     def deselect(self, agent:Agent):
-        self.selected.discard(agent.id)
-
-    def clear(self):
-        self.selected.clear()
+        self.discard(agent.id)
 
     # --- selection methods ---
     def select_by_click(self, agents, mouse_pos, box_size=1, multi=False):
@@ -80,7 +75,8 @@ class Manager:
     """
 
     def __init__(self, world: World = None, agents: list[Agent] | None = None,
-                 static_objects: list[WorldObject] | None = None):
+                 static_objects: list[WorldObject] | None = None,
+                 selection_manager: SelectionManager | None = None):
         """
         Initialize the Manager.
 
@@ -90,7 +86,7 @@ class Manager:
             static_objects (list[WorldObject], optional): List of static world objects.
         """
         self.world:World = world
-        self.agents: dict[int, Agent] = {agent.id: agent for agent in agents}
+        self.agents:dict[int, Agent] = {agent.id: agent for agent in agents}
         self.static_objects = static_objects if static_objects is not None else []
 
         self.day_counter: int = 0
@@ -99,6 +95,8 @@ class Manager:
         self.paused = True  # Tracks pause/resume state
 
         self._last_update_time: float | None = None  # <-- track last update internally
+
+        self.selection: SelectionManager = SelectionManager() if selection_manager is None else selection_manager
 
     def get_agents_id(self):
         return self.agents.keys()
@@ -179,6 +177,10 @@ class Manager:
             return  # Don't update agents while paused
 
         for agent in self.agents.values():
+            # Update selection modifier
+            color = (0,222,0) if agent.id in self.selection else (200,20,20)
+            agent.dummy_render_color = color
+
             # Ensure the agent moves based on the elapsed time
             agent.update(dt)
 

@@ -1,6 +1,6 @@
 import pygame
 from camera import Camera
-from world import World
+from world_object import WorldObject
 
 class Layer:
     def __init__(self, width, height, transparent=False):
@@ -28,8 +28,8 @@ class Layer:
         self.clear()
 
         for obj in self.objects:
-            if isinstance(obj,World):
-                obj.render(self.surface, camera)
-            elif camera.in_view(obj.x, obj.y):
+            if isinstance(obj,WorldObject) and camera.in_view(obj.x, obj.y):
                 # Cull: skip if outside the screen bounds
+                obj.render(self.surface, camera)
+            else:
                 obj.render(self.surface, camera)

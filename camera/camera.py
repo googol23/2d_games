@@ -40,12 +40,12 @@ class Camera:
         self.config = config if config is not None else CameraConfig()
 
     # --- Coordinate conversion ---
-    def world_to_screen(self, world_x, world_y):
+    def world_to_screen(self, world_x:float, world_y:float) -> tuple[float,float]:
         screen_x = (world_x - self.x) * self.tile_size
         screen_y = (world_y - self.y) * self.tile_size
         return screen_x, screen_y
 
-    def screen_to_world(self, screen_x, screen_y):
+    def screen_to_world(self, screen_x:int, screen_y:int) -> tuple[float,float]:
         world_x = screen_x / self.tile_size + self.x
         world_y = screen_y / self.tile_size + self.y
         return world_x, world_y

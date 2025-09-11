@@ -5,7 +5,7 @@ from collections import deque
 class Agent(WorldObject):
     def __init__(self, x: float = 0, y: float = 0, speed: float = 1.0):
         super().__init__(x, y)
-        self.path:list = []
+        self.path:list[tuple[float,float]] = []
         self.speed:float = speed      # meters per second
         self.moving:bool = False
 

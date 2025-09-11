@@ -1,2 +1,4 @@
 from .pgi_selection_controller import PGISelectionController
 from .pgi_camera import PGICameraControl
+from .pgi_agent_control import PGIAgentControl
+from .pgi_agent_path_painter import PGIAgentPathPainter

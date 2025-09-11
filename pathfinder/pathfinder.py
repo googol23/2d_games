@@ -67,7 +67,8 @@ def astar_find_path(start_x: int, start_y: int, goal_x: int, goal_y: int,
                     if obstacle_map[y_curr, nx] and obstacle_map[ny, x_curr]:
                         continue
 
-                tentative_g = g_curr + math.hypot(dx, dy) + max(0.0, height_map[ny, nx] - height_map[y_curr, x_curr])
+                # tentative_g = g_curr + math.hypot(dx, dy) + max(0.0, height_map[ny, nx] - height_map[y_curr, x_curr])
+                tentative_g = movement_cost(start_x,start_y,goal_x,goal_y,height_map)
                 if tentative_g < g_map[ny, nx]:
                     g_map[ny, nx] = tentative_g
                     f_new = tentative_g + math.hypot(goal_x - nx, goal_y - ny)
