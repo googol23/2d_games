@@ -9,7 +9,9 @@ from minimap import MiniMap
 from character import Human
 
 from manager import Manager, SelectionManager
-from pygame_interface import PygameSelectionController
+from pygame_interface import PGISelectionController
+from pygame_interface import PGICameraControl
+
 # --- Logging setup ---
 logger = logging.getLogger(__name__)
 PROJECT_PREFIXES = ("world", "terrain")
@@ -26,12 +28,7 @@ for name, log_obj in logging.root.manager.loggerDict.items():
 FPS = 60
 SCREEN_WIDTH, SCREEN_HEIGHT = 1024, 720
 WORLD_WIDTH, WORLD_HEIGHT = 100, 100
-TILE_SIZE = 5
-CAMERA_SPEED_TILES = 3       # reasonable speed
-ZOOM_STEP = 2
-MIN_TILE_SIZE = 1
-MAX_TILE_SIZE = 100
-
+TILE_SIZE = 10
 
 # --- Initialize world ---
 my_world = World(WORLD_WIDTH, WORLD_HEIGHT)
@@ -46,12 +43,6 @@ clara.x, clara.y = 20, 20
 all_agents = [rowan, clara]
 act_agents = []
 
-# --- Initialize Manager ---
-manager = Manager(world=my_world, agents=all_agents)
-manager.resume()
-
-selection = SelectionManager()
-pygame_selector = PygameSelectionController(selection_manager=selection)
 
 # --- Initialize Pygame ---
 pygame.init()
@@ -60,8 +51,8 @@ pygame.display.set_caption("Tile-Based Survival Game")
 clock = pygame.time.Clock()
 
 # --- Camera ---
-camera = Camera(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, tile_size=TILE_SIZE)
-
+camera = Camera(world=my_world, x=0, y=0, width_pxl=SCREEN_WIDTH, height_pxl=SCREEN_HEIGHT, tile_size=TILE_SIZE )
+camera_control = PGICameraControl(camera=camera)
 # --- Minimap ---
 minimap = MiniMap(my_world, camera, size=200, position=(SCREEN_WIDTH - 210, 10))
 
@@ -69,6 +60,13 @@ minimap = MiniMap(my_world, camera, size=200, position=(SCREEN_WIDTH - 210, 10))
 world_surface = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
 objects_layer = Layer(SCREEN_WIDTH, SCREEN_HEIGHT, transparent=True)
 movables_layer = Layer(SCREEN_WIDTH, SCREEN_HEIGHT, transparent=True)
+
+# --- Initialize Manager ---
+manager = Manager(world=my_world, agents=all_agents)
+manager.resume()
+
+selection = SelectionManager()
+pgi_selector = PGISelectionController(selection_manager=selection, camera=camera)
 
 # --- Example objects ---
 objects_layer.objects = manager.static_objects
@@ -83,7 +81,10 @@ while running:
     events = pygame.event.get()
 
     # update selection
-    pygame_selector.handle_events(events, manager.get_agents())
+    pgi_selector.handle_events(events, manager.get_agents())
+
+    # Control camera
+    camera_control.handle_actions()
 
     for event in events:
         if event.type == pygame.QUIT:
@@ -96,26 +97,6 @@ while running:
             if event.key == controls.PAUSE_GAME_KEY:
                 manager.toggle_pause()
                 print("game paused" if manager.paused else "game resumed")
-
-
-    keys = pygame.key.get_pressed()
-
-    # --- Camera movement (WASD + mouse-edge) ---
-    # WASD
-    for key, (dx, dy) in controls.CAMERA_KEYS.items():
-        if keys[key]:
-            camera.x += dx * CAMERA_SPEED_TILES
-            camera.y += dy * CAMERA_SPEED_TILES
-
-    # Mouse-edge panning
-    mouse_x, mouse_y = pygame.mouse.get_pos()
-    camera.edge_pan(mouse_x, mouse_y)
-
-    # --- Zoom ---
-    if any(keys[key] for key in controls.ZOOM_IN_KEYS):
-        camera.tile_size = min(camera.tile_size + ZOOM_STEP, MAX_TILE_SIZE)
-    if any(keys[key] for key in controls.ZOOM_OUT_KEYS):
-        camera.tile_size = max(camera.tile_size - ZOOM_STEP, MIN_TILE_SIZE)
 
     # Click on minimap handling
     if pygame.mouse.get_pressed()[0]:
@@ -134,7 +115,7 @@ while running:
     objects_layer.draw(camera)
     movables_layer.draw(camera)
 
-    pygame_selector.draw_drag_box(movables_layer.surface)
+    pgi_selector.draw_drag_box(movables_layer.surface)
 
     # --- Composite layers ---
     screen.blit(world_surface, (0, 0))

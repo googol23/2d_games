@@ -318,18 +318,18 @@ class World:
         tile_size = camera.tile_size
 
         # Cull: compute visible bounds once
-        start_x = max(int(camera.x // tile_size), 0)
-        end_x   = min(int((camera.x + camera.width) // tile_size + 1), self.world_size_x)
-        start_y = max(int(camera.y // tile_size), 0)
-        end_y   = min(int((camera.y + camera.height) // tile_size + 1), self.world_size_y)
+        start_x = max(int(camera.x), 0)
+        end_x   = min(int(camera.x + camera.width_tls + 1), self.world_size_x)
+        start_y = max(int(camera.y), 0)
+        end_y   = min(int(camera.y + camera.height_tls + 1), self.world_size_y)
 
         # Loop only over visible tiles
         for y in range(start_y, end_y):
             row_offset = y * self.world_size_x
-            screen_y = y * tile_size - camera.y
+            screen_y = int(y * tile_size - camera.y * tile_size)
             for x in range(start_x, end_x):
                 tile = self.tiles[row_offset + x]
-                screen_x = x * tile_size - camera.x
+                screen_x = int(x * tile_size - camera.x * tile_size)
 
                 if tile.terrain:
                     if tile.terrain.texture:

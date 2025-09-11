@@ -18,9 +18,13 @@ CAMERA_KEYS = {
     pygame.K_s: (0, 1),
 }
 
-# Zoom keys
-ZOOM_IN_KEYS  = [pygame.K_EQUALS, pygame.K_KP_PLUS]
-ZOOM_OUT_KEYS = [pygame.K_MINUS, pygame.K_KP_MINUS]
+ZOOM_KEYS = {
+    pygame.K_EQUALS: 1,
+    pygame.K_KP_PLUS: 1,
+    pygame.K_MINUS:-1,
+    pygame.K_KP_MINUS:-1
+}
+
 
 # Other actions
 TOGGLE_OVERLAY_KEY = pygame.K_F1

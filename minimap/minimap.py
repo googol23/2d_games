@@ -35,17 +35,12 @@ class MiniMap:
         scale_x = self.size / self.world.world_size_x
         scale_y = self.size / self.world.world_size_y
 
-        # Camera position in tiles
-        cam_x_tiles = self.camera.x / self.camera.tile_size
-        cam_y_tiles = self.camera.y / self.camera.tile_size
-        cam_w_tiles = self.camera.width / self.camera.tile_size
-        cam_h_tiles = self.camera.height / self.camera.tile_size
-
+        # Use camera.width_tls and camera.height_tls for dimensions in tiles
         cam_rect = pygame.Rect(
-            cam_x_tiles * scale_x,
-            cam_y_tiles * scale_y,
-            cam_w_tiles * scale_x,
-            cam_h_tiles * scale_y,
+            self.camera.x * scale_x,
+            self.camera.y * scale_y,
+            self.camera.width_tls * scale_x,
+            self.camera.height_tls * scale_y,
         )
 
         pygame.draw.rect(surface, (255, 0, 0), cam_rect, 2)
@@ -62,10 +57,7 @@ class MiniMap:
             world_y = rel_y / self.size * self.world.world_size_y
 
             # Convert to camera coordinates in pixels
-            cam_w_tiles = self.camera.width / self.camera.tile_size
-            cam_h_tiles = self.camera.height / self.camera.tile_size
-
-            self.camera.x = max(0, min((world_x - cam_w_tiles / 2) * self.camera.tile_size,
-                                       self.world.world_size_x * self.camera.tile_size - self.camera.width))
-            self.camera.y = max(0, min((world_y - cam_h_tiles / 2) * self.camera.tile_size,
-                                       self.world.world_size_y * self.camera.tile_size - self.camera.height))
+            self.camera.x = max(0, min((world_x - self.camera.width_tls / 2) * self.camera.tile_size,
+                                       self.world.world_size_x * self.camera.tile_size - self.camera.width_pxl))
+            self.camera.y = max(0, min((world_y - self.camera.height_tls / 2) * self.camera.tile_size,
+                                       self.world.world_size_y * self.camera.tile_size - self.camera.height_pxl))

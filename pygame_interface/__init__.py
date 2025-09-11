@@ -1,1 +1,2 @@
-from .selection_controller import PygameSelectionController
+from .pgi_selection_controller import PGISelectionController
+from .pgi_camera import PGICameraControl

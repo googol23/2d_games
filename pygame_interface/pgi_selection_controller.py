@@ -1,7 +1,9 @@
 import pygame
 from  manager import SelectionManager
-class PygameSelectionController:
-    def __init__(self, selection_manager: SelectionManager, box_size: float=20):
+from rendering import Camera
+
+class PGISelectionController:
+    def __init__(self, selection_manager: SelectionManager, camera: Camera, box_size: float=20):
         """
         Args:
             selection_manager (SelectionManager): your selection backend
@@ -12,6 +14,7 @@ class PygameSelectionController:
         self.dragging: bool = False
         self.drag_start: tuple[float,float] = (0, 0)
         self.drag_end: tuple[float,float] = (0, 0)
+        self.camera: Camera = camera
 
     def handle_events(self, events, agents):
         """
@@ -29,17 +32,31 @@ class PygameSelectionController:
 
             # --- Left mouse button up: finalize selection ---
             elif event.type == pygame.MOUSEBUTTONUP and event.button == 1:
-                self.drag_end = event.pos
                 if self.dragging:
-                    # Detect shift/ctrl for multi-selection
-                    multi = pygame.key.get_mods() & pygame.KMOD_SHIFT
+                    self.drag_end = event.pos
 
-                    # If mouse moved enough, do box selection
-                    if abs(self.drag_start[0]-self.drag_end[0]) > 5 or abs(self.drag_start[1]-self.drag_end[1]) > 5:
-                        self.selection_manager.select_by_box(agents, self.drag_start, self.drag_end, multi=multi)
+                    # Detect shift/ctrl for multi-selection
+                    mods = pygame.key.get_mods()
+                    multi = (mods & pygame.KMOD_SHIFT) or (mods & pygame.KMOD_CTRL)
+
+                    dx = self.drag_end[0] - self.drag_start[0]
+                    dy = self.drag_end[1] - self.drag_start[1]
+
+                    if dx*dx + dy*dy > 25:  # drag selection if moved more than 5px
+                        # convert to world coords only here
+                        start_world = self.camera.screen_to_world(*self.drag_start)
+                        end_world   = self.camera.screen_to_world(*self.drag_end)
+                        self.selection_manager.select_by_box(
+                            agents, start_world, end_world, multi=multi
+                        )
+                        print(f"Calling select_by_box(({self.drag_start}){start_world}, ({self.drag_end}){end_world})")
                     else:
-                        # Otherwise, do click selection
-                        self.selection_manager.select_by_click(agents, self.drag_end, box_size=self.box_size, multi=multi)
+                        # convert click position to world coords
+                        end_world = self.camera.screen_to_world(*self.drag_end)
+                        self.selection_manager.select_by_click(
+                            agents, end_world, box_size=self.box_size, multi=multi
+                        )
+                        print(f"Calling select_by_click({end_world})")
                 self.dragging = False
 
     def draw_drag_box(self, surface):
