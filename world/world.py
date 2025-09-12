@@ -18,8 +18,13 @@ class World:
     """
     Represents the game world, responsible for generation and rendering.
     """
+    _instance = None
 
     def __init__(self, world_size_x: int, world_size_y: int):
+        if World._instance is not None:
+            raise RuntimeError("World already exists!")
+        World._instance = self
+
         self.world_size_x = world_size_x
         self.world_size_y = world_size_y
         self.height_map = None
@@ -31,6 +36,12 @@ class World:
         size = world_size_x * world_size_y
         self.tiles = [Tile() for _ in range(size)]
         self.obstacle_map = np.zeros((self.world_size_y, self.world_size_x), dtype=bool)
+
+    @staticmethod
+    def get_instance():
+        if World._instance is None:
+            raise RuntimeError("World not created yet")
+        return World._instance
 
     def generate_obstacles(self, density: float = 0.05, seed: int | None = None):
         """

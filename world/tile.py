@@ -1,7 +1,9 @@
 from terrain import Terrain, TERRAIN_DATA, load_terrains_data
+from dataclasses import dataclass
 
+@dataclass(slots=True)
 class Tile:
-    def __init__(self, is_water:bool=False, terrain: Terrain | None = None):
-        self.is_water = is_water
-        self.terrain = terrain
+    terrain:Terrain | None = None
 
+    # TODO Handle later as property
+    is_water:bool = False
