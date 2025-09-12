@@ -1,2 +1,2 @@
 from .character import Character
-from .character import Human
+from .human import Human

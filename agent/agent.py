@@ -1,30 +1,52 @@
 from world_object import WorldObject
-from commands import Command
+from world import World
+from commands import Command, MoveCommand
 from collections import deque
 from enum import Enum
+from world import Tile
 
 class MoveMode(Enum):
     SWIM:float = 0.2
     CLIMB:float = 0.2
     WALK:float = 1
-    RUN:float = 2
+    RUN:float = 3
+
 
 class Agent(WorldObject):
-    def __init__(self, x: float = 0, y: float = 0, speed: float = 1.0):
+    class State(Enum):
+        IDLE = 0
+        MOVING = 1
+        BUSY = 2
+
+    def __init__(self, x: float = 0, y: float = 0, base_speed: float = 1.0):
         super().__init__(x, y)
         self.path:list[tuple[float,float]] = []
-        self.speed:float = speed           # meters per second
-        self.base_speed:float = speed      # meters per second
-        self.moving:bool = False
+        self.commands:deque = deque()
 
-        self.state = "Idle"
-        self.commands:deque = deque()   # fixed typo
+        self.base_speed:float = base_speed      # meters per second
+        self.move_mode = MoveMode.WALK
 
-    def get_speed(self):
-        return self.speed
+        self.world: World | None = World.get_instance()
+    @property
+    def state(self) -> State:
+        if len(self.commands) == 0:
+            return self.State.IDLE
+        elif isinstance(self.commands[0], MoveCommand):
+            return self.State.MOVING
+        else:
+            return self.State.BUSY
 
-    def move_mode(self, mode:MoveMode = MoveMode.WALK):
-        self.speed = self.base_speed * mode.value
+    @property
+    def speed(self)->float:
+        mode = self.move_mode
+        # Override mode if in water or climbing terrain
+        if self.world and self.world.get_tile(int(self.x), int(self.y)).is_water:
+            mode = MoveMode.SWIM
+        # TODO extend for climbing type terrains
+        return self.base_speed * mode.value
+
+    def set_move_mode(self, mode:MoveMode = MoveMode.WALK):
+        self.move_mode = mode
 
     def assign_command(self, command: Command):
         self.commands.append(command)
@@ -40,5 +62,3 @@ class Agent(WorldObject):
             done = current.execute(self, dt)
             if done:
                 self.commands.popleft()
-        else:
-            self.state = "Idle"
