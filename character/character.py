@@ -21,7 +21,6 @@ class Character(Agent, ABC):
         self.name = name
         self.age = age
         self.health = health
-        self.speed = speed
         self.idle = True
         self.energy = energy
         self.current_speed = 0
@@ -40,7 +39,7 @@ class Character(Agent, ABC):
             logger.debug(f"{self.name} has died.")
 
     def __str__(self):
-        return f"Name: {self.name}, Age: {self.age}, Health: {self.health}, Speed: {self.speed}"
+        return f"Name: {self.name}, Age: {self.age}, Health: {self.health}, Speed: {self.get_speed()}"
 
 
 

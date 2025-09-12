@@ -5,7 +5,7 @@ def test_initialization():
     agent = Agent(0, 0, speed=2.0)
     assert agent.x == 0
     assert agent.y == 0
-    assert agent.speed == 2.0
+    assert agent.get_speed() == 2.0
     assert agent.path == []
     assert agent.moving is False
 
