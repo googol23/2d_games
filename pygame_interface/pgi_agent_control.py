@@ -1,7 +1,7 @@
 import pygame
 
-from manager import Manager
 from camera import Camera
+from manager import Manager
 from agent import Agent, MoveMode
 from pathfinder import Pathfinder
 import commands
@@ -14,9 +14,10 @@ DOUBLE_CLICK_TIME = 300  # ms between clicks
 last_right_click_time = 0
 
 class PGIAgentControl:
-    def __init__(self, manager: Manager, camera: Camera):
+    def __init__(self, manager: Manager):
+        self.camera: Camera = Camera.get_instance()
         self.manager: Manager = manager
-        self.camera: Camera = camera
+        self.path_finder = Pathfinder(self.manager.world)
 
     def command_agents(self, events):
         if len(self.manager.selection) == 0:
@@ -40,12 +41,12 @@ class PGIAgentControl:
                     is within DOUBLE_CLICK_TIME window, use right click as agent speed modifier
                     """
                     if time_now - last_right_click_time <= DOUBLE_CLICK_TIME:
-                        agent.move_mode(MoveMode.RUN)
+                        agent.set_move_mode(MoveMode.RUN)
                     else:
                         # Find path
-                        path = Pathfinder(self.manager.world).find_path(start=(agent.x,agent.y),goal=world_pos)
                         agent.commands.clear()
-                        agent.move_mode(MoveMode.WALK)
+                        agent.set_move_mode(MoveMode.WALK)
+                        path = self.path_finder.find_path(start=(agent.x,agent.y),goal=world_pos, agent=agent)
                         agent.assign_command(commands.MoveCommand(path))
                         logger.debug(f"command assigned to {agent_id}: MoveCommnad, from {(agent.x,agent.y)} to {world_pos}")
 

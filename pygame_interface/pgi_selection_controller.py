@@ -6,7 +6,7 @@ import logging
 logger = logging.getLogger("pgi")
 
 class PGISelectionController:
-    def __init__(self, selection_manager: SelectionManager, camera: Camera, box_size: float=20):
+    def __init__(self, selection_manager: SelectionManager, box_size: float=20):
         """
         Args:
             selection_manager (SelectionManager): your selection backend
@@ -17,7 +17,7 @@ class PGISelectionController:
         self.dragging: bool = False
         self.drag_start: tuple[float,float] = (0, 0)
         self.drag_end: tuple[float,float] = (0, 0)
-        self.camera: Camera = camera
+        self.camera: Camera = Camera.get_instance()
 
     def handle_events(self, events, agents):
         """

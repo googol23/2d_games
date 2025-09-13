@@ -1,21 +1,22 @@
+from world import World
+from minimap import MiniMap
+
 import traceback
 import pygame
 import logging
 import sys
 
 import controls
-from world_object import WorldObject
-from world import World
 from camera import Camera
 from rendering import Layer
-from minimap import MiniMap
 from character import Human
 
-from manager import Manager, SelectionManager
+from manager import Manager
 from pygame_interface import PGISelectionController
 from pygame_interface import PGICameraControl
 from pygame_interface import PGIAgentControl
 from pygame_interface import PGIAgentPathPainter
+from pygame_interface import PGIWorldPainter
 
 # --- Logging setup ---
 logger = logging.getLogger(__name__)
@@ -35,12 +36,11 @@ SCREEN_WIDTH, SCREEN_HEIGHT = 1600, 1000
 WORLD_WIDTH, WORLD_HEIGHT = 100, 100
 
 # --- Initialize world ---
-my_world = World(WORLD_WIDTH, WORLD_HEIGHT)
-my_world.generate()
+World(WORLD_WIDTH, WORLD_HEIGHT).generate()
 
 # --- Initialize agents ---
-rowan = Human("Rowan", age=20,health=100,speed=1.5)
-clara = Human("Clara", age=20,health=100,speed=1.5)
+rowan = Human("Rowan", age=20)
+clara = Human("Clara", age=20)
 rowan.x, rowan.y = 10, 10
 clara.x, clara.y = 20, 20
 
@@ -54,17 +54,17 @@ pygame.display.set_caption("Tile-Based Survival Game")
 clock = pygame.time.Clock()
 
 # --- Camera ---
-camera = Camera(world=my_world, x=0, y=0, width_pxl=SCREEN_WIDTH, height_pxl=SCREEN_HEIGHT)
-camera_control = PGICameraControl(camera=camera)
+camera = Camera(x=0, y=0, width_pxl=SCREEN_WIDTH, height_pxl=SCREEN_HEIGHT)
+camera_control = PGICameraControl()
 # --- Minimap ---
-minimap = MiniMap(my_world, camera, size=200, position=(SCREEN_WIDTH - 210, 10))
+minimap = MiniMap(camera, size=200, position=(SCREEN_WIDTH - 210, 10))
 
 # --- Initialize Manager ---
-manager = Manager(world=my_world, agents=all_agents)
+manager = Manager(agents=all_agents)
 
 # --- Layers ---
 layer_world_terrains = Layer(SCREEN_WIDTH, SCREEN_HEIGHT, transparent=True)
-layer_world_terrains.add(my_world)
+layer_world_terrains.add(PGIWorldPainter())
 
 layer_world_elements = Layer(SCREEN_WIDTH, SCREEN_HEIGHT, transparent=True)
 for agent in all_agents:
@@ -73,8 +73,8 @@ for agent in all_agents:
 layer_game_interface = Layer(SCREEN_WIDTH, SCREEN_HEIGHT, transparent=True)
 layer_game_interface.add(PGIAgentPathPainter(manager=manager))
 
-pgi_selector = PGISelectionController(selection_manager=manager.selection, camera=camera)
-agent_controler = PGIAgentControl(manager=manager,camera=camera)
+pgi_selector = PGISelectionController(selection_manager=manager.selection)
+agent_controler = PGIAgentControl(manager=manager)
 
 # --- Overlay ---
 show_overlay = False
@@ -94,7 +94,8 @@ try:
                 if event.key == controls.TOGGLE_OVERLAY_KEY:
                     show_overlay = not show_overlay
                 if event.key == controls.REGENERATE_WORLD_KEY:
-                    my_world.generate()
+                    World.get_instance().generate()
+                    minimap.needs_redraw = True
                 if event.key == controls.PAUSE_GAME_KEY:
                     manager.toggle_pause()
                     print("game paused" if manager.paused else "game resumed")
@@ -114,9 +115,9 @@ try:
         manager.update()  # dt calculated automatically
 
         # --- Render ---
-        layer_world_terrains.draw(camera)
-        layer_world_elements.draw(camera)
-        layer_game_interface.draw(camera)
+        layer_world_terrains.draw()
+        layer_world_elements.draw()
+        layer_game_interface.draw()
 
         pgi_selector.draw_drag_box(layer_game_interface.surface)
 
@@ -136,9 +137,11 @@ try:
         clock.tick(FPS)
 except Exception as e:
     print(e)
-    pygame.quit()
     traceback.print_exc()
+    pygame.event.clear()
+    pygame.quit()
     sys.exit()
 finally:
+    pygame.event.clear()
     pygame.quit()
     sys.exit()

@@ -19,17 +19,14 @@ class Layer:
         """Clear the layer each frame before redrawing"""
         self.surface.fill((0, 0, 0, 0))
 
-    def draw(self, camera:Camera):
-        """Redraw all objects that are inside the camera view"""
-        self.clear()
-
-    def draw(self, camera: Camera):
+    def draw(self):
         """Draw all objects that are inside the camera view (by x,y only)"""
         self.clear()
+        camera:Camera = Camera.get_instance()
 
         for obj in self.objects:
             if isinstance(obj,WorldObject) and camera.in_view(obj.x, obj.y):
                 # Cull: skip if outside the screen bounds
-                obj.render(self.surface, camera)
+                obj.render(self.surface)
             else:
-                obj.render(self.surface, camera)
+                obj.render(self.surface)

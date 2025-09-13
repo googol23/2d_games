@@ -13,6 +13,13 @@ class Metrics:
     distance: float = 0
 
 class Human(Character):
+    NATURAL_MOVE_MODE: MoveMode = MoveMode.WALK
+    MOVE_MULTIPLIERS: dict[MoveMode, float] = {
+        MoveMode.WALK: 1.0,
+        MoveMode.RUN: 3.0,
+        MoveMode.SWIM: 0.5,
+        MoveMode.CLIMB: 0.2,
+    }
     def __init__(self, name:str, age:int, max_health:int = 100, base_speed:float = 1, max_energy:int = 1):
         super().__init__(name, age, max_health, base_speed, max_energy)
         self.inventory = defaultdict(float)

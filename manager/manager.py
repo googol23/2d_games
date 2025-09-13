@@ -3,7 +3,7 @@ import time
 from world import World
 from world_object import WorldObject
 from character import Character, Human
-from agent import Agent
+from agent import Agent, MoveMode
 from functools import cached_property
 
 import logging
@@ -74,7 +74,7 @@ class Manager:
     - Tracks in-game time and supports pause/resume functionality.
     """
 
-    def __init__(self, world: World = None, agents: list[Agent] | None = None,
+    def __init__(self, agents: list[Agent] | None = None,
                  static_objects: list[WorldObject] | None = None,
                  selection_manager: SelectionManager | None = None):
         """
@@ -85,7 +85,7 @@ class Manager:
             agents (list[Agents]): List of dynamic agents.
             static_objects (list[WorldObject], optional): List of static world objects.
         """
-        self.world:World = world
+        self.world = World.get_instance()
         self.agents:dict[int, Agent] = {agent.id: agent for agent in agents}
         self.static_objects = static_objects if static_objects is not None else []
 
@@ -181,7 +181,7 @@ class Manager:
             color = (0,222,0) if agent.id in self.selection else (200,20,20)
             agent.dummy_render_color = color
 
-            # Ensure the agent moves based on the elapsed time
+            # Ensure the agent is updated based on the elapsed time
             agent.update(dt)
 
     def update(self):

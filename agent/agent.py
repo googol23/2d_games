@@ -6,10 +6,10 @@ from enum import Enum
 from world import Tile
 
 class MoveMode(Enum):
-    SWIM:float = 0.2
-    CLIMB:float = 0.2
-    WALK:float = 1
-    RUN:float = 3
+    WALK: int = 1
+    RUN:  int = 2
+    SWIM: int = 3
+    CLIMB:int = 4
 
 
 class Agent(WorldObject):
@@ -18,15 +18,30 @@ class Agent(WorldObject):
         MOVING = 1
         BUSY = 2
 
+    # Class-level default
+    NATURAL_MOVE_MODE: MoveMode = MoveMode.WALK
+    MOVE_MULTIPLIERS: dict[MoveMode, float] = {
+        MoveMode.WALK: 1.0,
+        MoveMode.RUN: 1.0,
+        MoveMode.SWIM: 1.0,
+        MoveMode.CLIMB: 1.0,
+    }
+
     def __init__(self, x: float = 0, y: float = 0, base_speed: float = 1.0):
         super().__init__(x, y)
         self.path:list[tuple[float,float]] = []
         self.commands:deque = deque()
 
-        self.base_speed:float = base_speed      # meters per second
-        self.move_mode = MoveMode.WALK
+        self.base_speed:float = base_speed
+        self.move_mode = self.NATURAL_MOVE_MODE
+        self.move_mode_factor:dict[MoveMode,float] = self.MOVE_MULTIPLIERS
 
         self.world: World | None = World.get_instance()
+
+    @property
+    def natural_move_mode(self) -> MoveMode:
+        return self.NATURAL_MOVE_MODE
+
     @property
     def state(self) -> State:
         if len(self.commands) == 0:
@@ -43,7 +58,14 @@ class Agent(WorldObject):
         if self.world and self.world.get_tile(int(self.x), int(self.y)).is_water:
             mode = MoveMode.SWIM
         # TODO extend for climbing type terrains
-        return self.base_speed * mode.value
+        return self.base_speed * self.move_mode_factor[mode]
+
+    def speed_at(self, x:int, y:int) -> float:
+        mode = self.natural_move_mode
+        if self.world and self.world.get_tile(x, y).is_water:
+            mode = MoveMode.SWIM
+        # TODO extend for climbing type terrains
+        return self.base_speed * self.move_mode_factor[mode]
 
     def set_move_mode(self, mode:MoveMode = MoveMode.WALK):
         self.move_mode = mode

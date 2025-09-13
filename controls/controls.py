@@ -9,7 +9,7 @@ MOVEMENT_KEYS = {
 }
 
 # Camera movement keys (WASD)
-PAN_EDGE_SIZE = 20           # Pixels from the screen edge to start panning
+PAN_EDGE_SIZE = 10           # Pixels from the screen edge to start panning
 PAN_EDGE_PAN_SPEED = 1       # Tiles per frame
 CAMERA_KEYS = {
     pygame.K_a: (-1, 0),

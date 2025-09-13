@@ -1,4 +1,6 @@
+from world import World
 import controls
+from typing_extensions import Self
 
 class CameraConfig:
     def __init__(self,
@@ -12,8 +14,20 @@ class CameraConfig:
         self.MAX_TILE_SIZE = max_tile_size
 
 class Camera:
+    _self: Self | None = None
+
+    def __new__(cls, *args, **kwargs):
+        if cls._self is None:
+            cls._self = super().__new__(cls)
+        return cls._self
+
+    @classmethod
+    def get_instance(cls):
+        if cls._self is None:
+            raise RuntimeError("World not created yet")
+        return cls._self
+
     def __init__(self,
-                 world,
                  x:float=0,
                  y:float=0,
                  width_pxl:int=800,
@@ -26,7 +40,7 @@ class Camera:
         :param width_pxl, height_pxl: camera size in pixels
         :param tile_size: pixels per tile
         """
-        self.world = world
+        self.world = World.get_instance()
         self.x = x
         self.y = y
         self.width_pxl = width_pxl

@@ -3,8 +3,8 @@ from camera import Camera
 from controls import CAMERA_KEYS, ZOOM_KEYS, PAN_EDGE_SIZE
 
 class PGICameraControl:
-    def __init__(self, camera: Camera):
-        self.camera: Camera = camera
+    def __init__(self):
+        self.camera: Camera = Camera.get_instance()
 
     def handle_actions(self):
         """
