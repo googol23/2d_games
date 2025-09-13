@@ -1,29 +1,29 @@
-import pygame
 import random
 import numpy as np
 from collections import deque
-
 from scipy.ndimage import label
-from .tile import Tile
+from typing_extensions import Self
+
 from terrain import TERRAIN_DATA, load_terrains_data
-from camera import Camera
+
+from .tile import Tile
 from .topology import generate_topological_map, visualize_topological_map
 
 import logging
-
 logger = logging.getLogger(__name__)
-
 
 class World:
     """
-    Represents the game world, responsible for generation and rendering.
+    Represents the game world, responsible for generation.
     """
-    _instance = None
+    _self: Self | None = None
+
+    def __new__(cls, *args, **kwargs):
+        if cls._self is None:
+            cls._self = super().__new__(cls)
+        return cls._self
 
     def __init__(self, world_size_x: int, world_size_y: int):
-        if World._instance is not None:
-            raise RuntimeError("World already exists!")
-        World._instance = self
 
         self.world_size_x = world_size_x
         self.world_size_y = world_size_y
@@ -37,11 +37,14 @@ class World:
         self.tiles = [Tile() for _ in range(size)]
         self.obstacle_map = np.zeros((self.world_size_y, self.world_size_x), dtype=bool)
 
-    @staticmethod
-    def get_instance():
-        if World._instance is None:
+        load_terrains_data()
+
+
+    @classmethod
+    def get_instance(cls):
+        if cls._self is None:
             raise RuntimeError("World not created yet")
-        return World._instance
+        return cls._self
 
     def generate_obstacles(self, density: float = 0.05, seed: int | None = None):
         """
@@ -79,8 +82,6 @@ class World:
         """
         Generates the height map and assigns terrains based on height.
         """
-        load_terrains_data()
-
         n_of_peaks = random.randint(5, 10)
         self.height_map = generate_topological_map(
             self.world_size_x, self.world_size_y, n_of_peaks=n_of_peaks
@@ -321,46 +322,3 @@ class World:
                 self.water_map[y, x] = 1  # consistent indexing
 
         return len(river_path)
-
-    def render(self, surface: pygame.Surface, camera: Camera):
-        """
-        Renders the visible portion of the world, making it efficient for a dynamic
-        camera and world.
-        """
-        tile_size = camera.tile_size
-
-         # Fill background so out-of-bounds areas don't leave artifacts
-        surface.fill((0, 0, 0))  # or ocean blue, or whatever makes sense
-
-        # Cull: compute visible bounds once
-        start_x = max(int(camera.x), 0)
-        end_x   = min(int(camera.x + camera.width_tls + 1), self.world_size_x)
-        start_y = max(int(camera.y), 0)
-        end_y   = min(int(camera.y + camera.height_tls + 1), self.world_size_y)
-
-        # Loop only over visible tiles
-        for y in range(start_y, end_y):
-            row_offset = y * self.world_size_x
-            screen_y = round(y * tile_size - camera.y * tile_size)
-            for x in range(start_x, end_x):
-                tile = self.tiles[row_offset + x]
-                screen_x = round(x * tile_size - camera.x * tile_size)
-
-                if tile.terrain:
-                    if tile.terrain.texture:
-                        surface.blit(
-                            pygame.transform.scale(tile.terrain.texture, (tile_size, tile_size)),
-                            (screen_x, screen_y),
-                        )
-                    else:
-                        pygame.draw.rect(
-                            surface,
-                            tile.terrain.color,
-                            pygame.Rect(screen_x, screen_y, tile_size, tile_size),
-                        )
-                else:
-                    pygame.draw.rect(
-                        surface,
-                        (87, 87, 87),
-                        pygame.Rect(screen_x, screen_y, tile_size, tile_size),
-                    )
