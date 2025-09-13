@@ -33,10 +33,10 @@ for name, log_obj in logging.root.manager.loggerDict.items():
 # --- Configuration ---
 FPS = 60
 SCREEN_WIDTH, SCREEN_HEIGHT = 1600, 1000
-WORLD_WIDTH, WORLD_HEIGHT = 100, 100
+WORLD_WIDTH, WORLD_HEIGHT = 150, 100
 
 # --- Initialize world ---
-World(WORLD_WIDTH, WORLD_HEIGHT).generate()
+World(world_size_x=WORLD_WIDTH, world_size_y=WORLD_HEIGHT).generate()
 
 # --- Initialize agents ---
 rowan = Human("Rowan", age=20)
@@ -56,8 +56,9 @@ clock = pygame.time.Clock()
 # --- Camera ---
 camera = Camera(x=0, y=0, width_pxl=SCREEN_WIDTH, height_pxl=SCREEN_HEIGHT)
 camera_control = PGICameraControl()
+
 # --- Minimap ---
-minimap = MiniMap(camera, size=200, position=(SCREEN_WIDTH - 210, 10))
+minimap = MiniMap(size=200, position=(SCREEN_WIDTH - 210, 10))
 
 # --- Initialize Manager ---
 manager = Manager(agents=all_agents)
@@ -125,10 +126,10 @@ try:
         screen.blit(layer_world_terrains.surface, (0, 0))
         screen.blit(layer_world_elements.surface, (0, 0))
         screen.blit(layer_game_interface.surface, (0, 0))
-
-
         # Draw minimap on screen
         screen.blit(minimap.render(), minimap.position)
+
+
         text_surface = pygame.font.SysFont(None, 40).render(f"{manager.days:.2f}", True, (255,0,0))
         screen.blit(text_surface, (0, 0))
 

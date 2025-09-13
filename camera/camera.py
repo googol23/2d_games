@@ -24,7 +24,7 @@ class Camera:
     @classmethod
     def get_instance(cls):
         if cls._self is None:
-            raise RuntimeError("World not created yet")
+            raise RuntimeError("Camera not created yet")
         return cls._self
 
     def __init__(self,

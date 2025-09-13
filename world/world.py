@@ -319,6 +319,6 @@ class World:
             tile = self.get_tile(x, y)
             if not tile.is_water:
                 self.set_tile(x, y, Tile(is_water=True, terrain=TERRAIN_DATA["river"]))
-                self.water_map[y, x] = 1  # consistent indexing
+                self.water_map[x, y] = 1  # consistent indexing
 
         return len(river_path)
