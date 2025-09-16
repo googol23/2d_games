@@ -18,7 +18,7 @@ from pygame_interface import PGICameraControl
 from pygame_interface import PGIAgentControl
 from pygame_interface import PGIAgentPathPainter
 from pygame_interface import PGIWorldPainter
-
+from pygame_interface import PGIWorldObjectPainter
 # --- Logging setup ---
 logger = logging.getLogger("main")
 PROJECT_PREFIXES = ("main","world", "terrain", "pgi", "manager")
@@ -64,63 +64,20 @@ minimap = MiniMap(size=200, position=(SCREEN_WIDTH - 210, 10))
 # --- Initialize Manager ---
 manager = Manager(agents=all_agents)
 
-# --- Loading screen ---
-progress = 0
-total = 1
-def loading_screen(c, t):
-    global progress, total
-    progress, total = c, t
-
-def draw_loading():
-    screen.fill((0,0,0))
-    pct = int(progress / total * 100)
-    font = pygame.font.Font(None, 36)
-    text = font.render(f"Loading... {pct}%", True, (255,255,255))
-    screen.blit(text, (100,100))
-    pygame.display.flip()
-
-world_painter = PGIWorldPainter(progress_callback=loading_screen)
-
-# Precompute in a separate thread
-thread = threading.Thread(target=lambda: world_painter.precompute(iso_view=True))
-thread.start()
-
-try:
-    # Loading screen loop
-    running = True
-    while running:
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                running = False
-                break
-
-        draw_loading()
-        clock.tick(60)
-        if not thread.is_alive():
-            running = False
-
-    thread.join()  # ensure precompute is fully finished
-    logger.info("WorldPainter precomputation done!")
-    world_painter._last_cam_x = None
-    world_painter._last_cam_y = None
-    world_painter._last_tile_size = None
-except Exception as e:
-    print(e)
-    traceback.print_exc()
-
 # --- Layers ---
-layer_world_terrains = Layer(SCREEN_WIDTH, SCREEN_HEIGHT, transparent=True)
-layer_world_terrains.add(world_painter)
+world_painter = PGIWorldPainter()
 
-layer_world_elements = Layer(SCREEN_WIDTH, SCREEN_HEIGHT, transparent=True)
-for agent in all_agents:
-    layer_world_elements.add(agent)
-
+# layer_world_elements = Layer(SCREEN_WIDTH, SCREEN_HEIGHT, transparent=True)
+# for agent in all_agents:
+    # layer_world_elements.add_sprite(PGIWorldObjectPainter(agent))
+    # layer_world_elements.add(agent)
 layer_game_interface = Layer(SCREEN_WIDTH, SCREEN_HEIGHT, transparent=True)
 layer_game_interface.add(PGIAgentPathPainter(manager=manager))
 
+# --- Pygame interfaceing ---
 pgi_selector = PGISelectionController(selection_manager=manager.selection)
 agent_controler = PGIAgentControl(manager=manager)
+
 
 # --- Overlay ---
 show_overlay = False
@@ -142,6 +99,7 @@ try:
                 if event.key == controls.REGENERATE_WORLD_KEY:
                     World.get_instance().generate()
                     minimap.needs_redraw = True
+                    world_painter.reset()
                 if event.key == controls.PAUSE_GAME_KEY:
                     manager.toggle_pause()
                     print("game paused" if manager.paused else "game resumed")
@@ -161,15 +119,19 @@ try:
         manager.update()  # dt calculated automatically
 
         # --- Render ---
-        layer_world_terrains.draw()
-        layer_world_elements.draw()
-        layer_game_interface.draw()
+        world_painter.update()
+        world_surfice = world_painter.draw()
+
+        # layer_world_terrains.draw()
+        # layer_world_elements.draw()
+        # layer_game_interface.draw()
 
         pgi_selector.draw_drag_box(layer_game_interface.surface)
 
         # --- Composite layers ---
-        screen.blit(layer_world_terrains.surface, (0, 0))
-        screen.blit(layer_world_elements.surface, (0, 0))
+        # screen.blit(layer_world_terrains.surface, (0, 0))
+        # screen.blit(layer_world_elements.surface, (0, 0))
+        screen.blit(world_surfice, (0, 0))
         screen.blit(layer_game_interface.surface, (0, 0))
         # Draw minimap on screen
         screen.blit(minimap.render(), minimap.position)

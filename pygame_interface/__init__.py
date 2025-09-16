@@ -3,3 +3,4 @@ from .pgi_camera import PGICameraControl
 from .pgi_agent_control import PGIAgentControl
 from .pgi_agent_path_painter import PGIAgentPathPainter
 from .pgi_world_painter import PGIWorldPainter
+from .pgi_world_object_painter import PGIWorldObjectPainter
