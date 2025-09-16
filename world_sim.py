@@ -5,6 +5,8 @@ import traceback
 import pygame
 import logging
 import sys
+import threading
+import time
 
 import controls
 from camera import Camera
@@ -19,8 +21,8 @@ from pygame_interface import PGIAgentPathPainter
 from pygame_interface import PGIWorldPainter
 
 # --- Logging setup ---
-logger = logging.getLogger(__name__)
-PROJECT_PREFIXES = ("world", "terrain", "pgi", "manager")
+logger = logging.getLogger("main")
+PROJECT_PREFIXES = ("main","world", "terrain", "pgi", "manager")
 ch = logging.StreamHandler()
 ch.setLevel(logging.DEBUG)
 formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -33,7 +35,7 @@ for name, log_obj in logging.root.manager.loggerDict.items():
 # --- Configuration ---
 FPS = 60
 SCREEN_WIDTH, SCREEN_HEIGHT = 1600, 1000
-WORLD_WIDTH, WORLD_HEIGHT = 150, 100
+WORLD_WIDTH, WORLD_HEIGHT = 1600, 1000
 
 # --- Initialize world ---
 World(world_size_x=WORLD_WIDTH, world_size_y=WORLD_HEIGHT).generate()
@@ -79,6 +81,52 @@ agent_controler = PGIAgentControl(manager=manager)
 
 # --- Overlay ---
 show_overlay = False
+
+# --- Loading screen ---
+progress = 0
+total = 1
+def loading_screen(c, t):
+    global progress, total
+    progress, total = c, t
+
+def draw_loading():
+    screen.fill((0,0,0))
+    pct = int(progress / total * 100)
+    font = pygame.font.Font(None, 36)
+    text = font.render(f"Loading... {pct}%", True, (255,255,255))
+    screen.blit(text, (100,100))
+    pygame.display.flip()
+
+world_painter = PGIWorldPainter(progress_callback=loading_screen)
+
+# Precompute in a separate thread
+thread = threading.Thread(target=lambda: world_painter.precompute(iso_view=True))
+thread.start()
+
+try:
+    # Loading screen loop
+    running = True
+    while running:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+                break
+
+        draw_loading()
+        clock.tick(60)
+        if not thread.is_alive():
+            running = False
+
+    thread.join()  # ensure precompute is fully finished
+    logger.info("WorldPainter precomputation done!")
+    world_painter._last_cam_x = None  # or any value different from camera.x
+    world_painter._last_cam_y = None
+    world_painter._last_tile_size = None
+except Exception as e:
+    print(e)
+    traceback.print_exc()
+
+
 
 # --- Main loop ---
 try:

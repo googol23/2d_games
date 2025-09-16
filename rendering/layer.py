@@ -25,8 +25,9 @@ class Layer:
         camera:Camera = Camera.get_instance()
 
         for obj in self.objects:
-            if isinstance(obj,WorldObject) and camera.in_view(obj.x, obj.y):
-                # Cull: skip if outside the screen bounds
-                obj.render(self.surface)
+            if isinstance(obj,WorldObject):
+                if camera.in_view(obj.x, obj.y):
+                    # Cull: skip if outside the screen bounds
+                    obj.render(self.surface)
             else:
                 obj.render(self.surface)

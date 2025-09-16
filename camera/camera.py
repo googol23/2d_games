@@ -7,13 +7,15 @@ class CameraConfig:
                  speed_tiles:float=0.1,
                  zoom_step:int = 2,
                  pan_edge_size:int = 10,
-                 min_tile_size = 10,
-                 max_tile_size = 100):
+                 min_tile_size = 8,
+                 max_tile_size = 32,
+                 iso_view:bool = False):
         self.SPEED_TILES:float = speed_tiles # Percentual of the curret visible tiles
         self.ZOOM_STEP = zoom_step
         self.MIN_TILE_SIZE = min_tile_size
         self.MAX_TILE_SIZE = max_tile_size
         self.PAN_EDGE_SIZE = pan_edge_size
+        self.ISO_VIEW = iso_view
 
 class Camera:
     _self: Self | None = None
@@ -34,7 +36,7 @@ class Camera:
                  y:float=0,
                  width_pxl:int=800,
                  height_pxl:int=600,
-                 tile_size=5,
+                 tile_size:int=5,
                  config: CameraConfig | None = None):
         """
         :param world: World object reference
@@ -47,12 +49,14 @@ class Camera:
         self.y = y
         self.width_pxl = width_pxl
         self.height_pxl = height_pxl
-        self.tile_size = tile_size
+
+        self.config = config if config is not None else CameraConfig()
+
+        self.tile_size = max(self.config.MIN_TILE_SIZE,
+                            min(tile_size, self.config.MAX_TILE_SIZE))
 
         self.width_tls = self.width_pxl / self.tile_size
         self.height_tls = self.height_pxl / self.tile_size
-
-        self.config = config if config is not None else CameraConfig()
 
         self.iso_tile_w = tile_size * 2   # full width
         self.iso_tile_h = tile_size       # full height
@@ -83,23 +87,33 @@ class Camera:
         Convert grid coordinates -> screen pixel coords (isometric).
         Returns top vertex of the tile diamond.
         """
-        screen_x = (world_x - world_y) * self.iso_half_w - self.x * self.tile_size
-        screen_y = (world_x + world_y) * self.iso_half_h - self.y * self.tile_size
-        return int(round(screen_x)), int(round(screen_y))
+        screen_x = (world_x - world_y) * self.iso_half_w - self.x * self.iso_half_w * 2
+        screen_y = (world_x + world_y) * self.iso_half_h - self.y * self.iso_half_h * 2
+
+        # Add offsets to align the map properly on screen
+        offset_x = self.width_pxl // 2  # center horizontally
+        offset_y = 0                     # adjust vertically if needed
+
+        return int(round(screen_x + offset_x)), int(round(screen_y + offset_y))
 
 
     def screen_to_world_iso(self, screen_x: int, screen_y: int) -> tuple[float, float]:
         """
         Convert screen pixel coords in isometric view -> grid coordinates (can be fractional).
         """
-        wx = screen_x + self.x * self.tile_size
-        wy = screen_y + self.y * self.tile_size
+        # Apply the same offset before inverting the isometric projection
+        offset_x = self.width_pxl // 2
+        offset_y = 0
+
+        wx = screen_x - offset_x + self.x * self.tile_size
+        wy = screen_y - offset_y + self.y * self.tile_size
+
         world_x = (wx / self.iso_half_w + wy / self.iso_half_h) * 0.5
         world_y = (wy / self.iso_half_h - wx / self.iso_half_w) * 0.5
         return world_x, world_y
 
 
-    def in_view(self, x: float, y: float) -> bool:
+    def in_view(self, world_x: float, world_y: float) -> bool:
         """
         Check if a world coordinate (x, y) is within the camera's current view.
 
@@ -107,39 +121,30 @@ class Camera:
         :param y: World y coordinate
         :return: True if (x, y) is inside camera view, False otherwise
         """
-        return (
-            self.x <= x < self.x + self.width_tls and
-            self.y <= y < self.y + self.height_tls
-        )
+        if self.config.ISO_VIEW:
+            sw, sh = self.width_pxl, self.height_pxl
 
-    def in_view_iso(self, world_x:float, world_y: float)-> bool:
-        """
-        Check if a world coordinate (x, y) is within the camera's current view.
-        This is use for a isometric top-down rendering
+            # convert screen corners to world grid coords (floats)
+            corners = [(0, 0), (sw, 0), (sw, sh), (0, sh)]
+            gxs, gys = [], []
+            for cx, cy in corners:
+                gx, gy = self.screen_to_world_iso(cx, cy)
+                gxs.append(gx)
+                gys.append(gy)
 
-        :param world_x: World x coordinate
-        :param world_y: World y coordinate
-        :return: True if (world_x, world_y) is inside camera view, False otherwise
-        """
-        sw, sh = self.width_pxl, self.height_pxl
+            # bounds remain floats
+            margin = 2.0
+            min_x = max(0.0, min(gxs) - margin)
+            max_x = min(self.world.world_size_x,  max(gxs) + margin)
+            min_y = max(0.0, min(gys) - margin)
+            max_y = min(self.world.world_size_y, max(gys) + margin)
 
-        # convert screen corners to world grid coords (floats)
-        corners = [(0, 0), (sw, 0), (sw, sh), (0, sh)]
-        gxs, gys = [], []
-        for cx, cy in corners:
-            gx, gy = self.screen_to_world_iso(cx, cy)
-            gxs.append(gx)
-            gys.append(gy)
-
-        # bounds remain floats
-        margin = 2.0
-        min_x = max(0.0, min(gxs) - margin)
-        max_x = min(self.world.width,  max(gxs) + margin)
-        min_y = max(0.0, min(gys) - margin)
-        max_y = min(self.world.height, max(gys) + margin)
-
-        return (min_x <= world_x <= max_x) and (min_y <= world_y <= max_y)
-
+            return (min_x <= world_x <= max_x) and (min_y <= world_y <= max_y)
+        else:
+            return (
+                self.x <= world_x < self.x + self.width_tls and
+                self.y <= world_y < self.y + self.height_tls
+            )
 
     # --- Movement ---
     def move(self, dx:int, dy:int ):
