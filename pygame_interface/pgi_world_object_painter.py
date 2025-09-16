@@ -1,66 +1,76 @@
 import pygame
-from world_object import WorldObject
 from camera import Camera
-from functools import cached_property
-
+from world_object import WorldObject
+from pathlib import Path
 
 class PGIWorldObjectPainter(pygame.sprite.Sprite):
-    def __init__(self, world_obj: WorldObject):
+    """
+    Sprite wrapper for a WorldObject.
+    Loads texture once at init; falls back to a colored rectangle.
+    Draws the object's name above the rectangle/texture.
+    """
+
+    def __init__(self, obj: WorldObject):
         super().__init__()
-        self.world_obj = world_obj
-        self._last_tile_size = None
-        self._last_name = None
-        self.image = pygame.Surface((1, 1), pygame.SRCALPHA)
+        self.obj = obj
+        self.camera = Camera.get_instance()
+        self.image = None
+        self.rect = None
+
+        # Load texture once
+        self._texture = None
+        if hasattr(self.obj, "texture") and self.obj.texture:
+            path = Path(self.obj.texture)
+            if path.is_file():
+                try:
+                    loaded = pygame.image.load(str(path)).convert_alpha()
+                    self._texture = loaded
+                except Exception as e:
+                    print(f"Failed to load texture {self.obj.texture}: {e}")
+
+        self.update_image(self.camera.tile_size)
+        self.update_position(self.camera)
+
+    def update_image(self, tile_size: int):
+        """
+        Update sprite image based on tile_size.
+        Uses cached texture if available, otherwise draws a rectangle.
+        Draws the object's name above the figure.
+        """
+        # Font for the name
+        font_size = max(12, self.camera.height_pxl // 40)
+        font = pygame.font.SysFont(None, font_size)
+        obj_name = str(getattr(self.obj, "name", f"{self.obj.x},{self.obj.y}"))
+        text_surface = font.render(obj_name, True, (255, 255, 255))
+
+        # Surface size: width is max(tile_size, text width), height = tile_size + text height
+        surface_width = max(tile_size, text_surface.get_width())
+        total_height = tile_size + text_surface.get_height()
+        self.image = pygame.Surface((surface_width, total_height), pygame.SRCALPHA)
+
+        shape_x = (surface_width - tile_size) // 2
+        shape_y = text_surface.get_height()
+
+        # Draw object: texture or rectangle
+        if self._texture:
+            texture_scaled = pygame.transform.smoothscale(self._texture, (tile_size, tile_size))
+            self.image.blit(texture_scaled, (shape_x, shape_y))
+        else:
+            color = getattr(self.obj, "color", (255, 0, 0))
+            pygame.draw.rect(self.image, color, pygame.Rect(shape_x, shape_y, tile_size, tile_size))
+
+        # Draw name above
+        text_x = (surface_width - text_surface.get_width()) // 2
+        self.image.blit(text_surface, (text_x, 0))
+
+        # Update rect
         self.rect = self.image.get_rect()
 
-    @cached_property
-    def font(self):
-        """Cache the font object globally, fonts are expensive to recreate."""
-        return pygame.font.SysFont(None, 24)
-
-    def _make_surface(self, tile_size: int) -> pygame.Surface:
-        """Create the rendered surface for the object at a given tile size."""
-        name = getattr(self.world_obj, "name", type(self.world_obj).__name__)
-        text_surf = self.font.render(name, True, (255, 255, 255))
-
-        # Determine surface size
-        width = max(tile_size, text_surf.get_width())
-        height = tile_size + text_surf.get_height()
-        surf = pygame.Surface((width, height), pygame.SRCALPHA)
-
-        if getattr(self.world_obj, "texture", None):
-            # If the object has a texture, use it
-            texture = pygame.transform.scale(self.world_obj.texture, (tile_size, tile_size))
-            surf.blit(texture, (0, text_surf.get_height()))
-        else:
-            # Draw placeholder triangle
-            triangle_height = tile_size
-            triangle_width = tile_size
-            points = [
-                (triangle_width // 2, text_surf.get_height()),             # top vertex
-                (0, text_surf.get_height() + triangle_height),            # bottom-left
-                (triangle_width, text_surf.get_height() + triangle_height)  # bottom-right
-            ]
-            color = getattr(self.world_obj, "dummy_render_color", (200, 50, 50))
-            pygame.draw.polygon(surf, color, points)
-
-        # Draw the object’s name on top
-        surf.blit(text_surf, (0, 0))
-        return surf
-
-    def update(self):
-        camera = Camera.get_instance()
-        tile_size = camera.tile_size
-        name = getattr(self.world_obj, "name", type(self.world_obj).__name__)
-
-        # Only recreate surface if tile size or object name changed
-        if tile_size != self._last_tile_size or name != self._last_name:
-            self.image = self._make_surface(tile_size)
-            self._last_tile_size = tile_size
-            self._last_name = name
-            self.rect = self.image.get_rect()
-
-        # Update position every frame so the bottom-left of the rectangle matches world coordinates
-        screen_x, screen_y = camera.world_to_screen(self.world_obj.x, self.world_obj.y)
-        # offset Y so the rectangle sits below the text
-        self.rect.topleft = (screen_x, screen_y - self.font.get_height())
+    def update_position(self, camera: Camera):
+        """
+        Position the sprite on the screen based on camera.
+        Bottom of rectangle/image aligns with world coordinates.
+        """
+        screen_x = (self.obj.x - camera.x) * camera.tile_size
+        screen_y = (self.obj.y - camera.y) * camera.tile_size
+        self.rect.topleft = (int(screen_x), int(screen_y + self.rect.height - camera.tile_size))

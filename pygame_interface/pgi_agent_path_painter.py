@@ -6,11 +6,10 @@ from commands import MoveCommand
 class PGIAgentPathPainter:
     def __init__(self, manager: Manager | None = None):
         self.manager: Manager = manager
+        self.camera:Camera = Camera.get_instance()
 
     def draw(self, surface):
-        camera:Camera = Camera.get_instance()
-
-        if not self.manager:
+        if not self.manager or not self.camera:
             return
 
         agents = self.manager.get_agents()
@@ -19,7 +18,7 @@ class PGIAgentPathPainter:
                 continue
 
             # Convert world positions to screen positions
-            points = [camera.world_to_screen(x, y) for (x, y) in agent.commands[0].path]
+            points = [self.camera.world_to_screen(x, y) for (x, y) in agent.commands[0].path]
 
             if len(points) > 1:
                 pygame.draw.lines(surface, (0, 0, 255), False, points, 2)

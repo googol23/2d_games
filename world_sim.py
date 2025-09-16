@@ -18,7 +18,7 @@ from pygame_interface import PGICameraControl
 from pygame_interface import PGIAgentControl
 from pygame_interface import PGIAgentPathPainter
 from pygame_interface import PGIWorldPainter
-from pygame_interface import PGIWorldObjectPainter
+from pygame_interface import PGIWorldObjectSetPainter
 # --- Logging setup ---
 logger = logging.getLogger("main")
 PROJECT_PREFIXES = ("main","world", "terrain", "pgi", "manager")
@@ -45,13 +45,11 @@ clara = Human("Clara", age=20)
 rowan.x, rowan.y = 10, 10
 clara.x, clara.y = 20, 20
 
-all_agents = [rowan, clara]
-act_agents = []
 
 # --- Initialize Pygame ---
 pygame.init()
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
-pygame.display.set_caption("Tile-Based Survival Game")
+pygame.display.set_caption("DPEPDPEC")
 clock = pygame.time.Clock()
 
 # --- Camera ---
@@ -61,13 +59,18 @@ camera = Camera(x=0, y=0, width_pxl=SCREEN_WIDTH, height_pxl=SCREEN_HEIGHT)
 minimap = MiniMap(size=SCREEN_WIDTH//8, position=(SCREEN_WIDTH - 200, 10))
 
 # --- Initialize Manager ---
-manager = Manager(agents=all_agents)
+manager = Manager(agents=[rowan,clara])
 
 # --- Layers ---
 surface_world_terrains = pygame.Surface((camera.width_pxl,camera.height_pxl), pygame.SRCALPHA)
+surface_world_elements = pygame.Surface((camera.width_pxl,camera.height_pxl), pygame.SRCALPHA)
 surface_game_interface = pygame.Surface((camera.width_pxl,camera.height_pxl), pygame.SRCALPHA)
 
+# ---- Sprite Groups and Painters ----
 world_painter = PGIWorldPainter()
+elemt_painter = PGIWorldObjectSetPainter(manager = manager)
+paths_painter = PGIAgentPathPainter(manager=manager)
+
 
 # --- Pygame interfaceing ---
 camera_control = PGICameraControl()
@@ -85,7 +88,8 @@ try:
     while running:
         screen.fill((0, 0, 0))  # clear the screen each frame
         surface_world_terrains.fill((0, 0, 0, 0))
-        # surface_game_interface.fill((0, 0, 0, 0))
+        surface_world_elements.fill((0, 0, 0, 0))
+        surface_game_interface.fill((0, 0, 0, 0))
 
         events = pygame.event.get()
         keys = pygame.key.get_pressed()
@@ -107,7 +111,7 @@ try:
 
         # update selection
         pgi_selector.handle_events(events, manager.get_agents())
-        # agent_controler.command_agents(events)
+        agent_controler.command_agents(events)
 
         # Update the world and agents
         manager.update()  # dt calculated automatically
@@ -121,13 +125,18 @@ try:
 
         # --- Render ---
         world_painter.update()
+        elemt_painter.update()
+
         world_painter.draw(surface_world_terrains)
+        elemt_painter.draw(surface_world_elements)
 
         pgi_selector.draw_drag_box(surface_game_interface)
+        paths_painter.draw(surface_game_interface)
         minimap.draw(surface_game_interface)
 
         # --- Composite layers ---
         screen.blit(surface_world_terrains, (0, 0))
+        screen.blit(surface_world_elements, (0, 0))
         screen.blit(surface_game_interface, (0, 0))
 
 
