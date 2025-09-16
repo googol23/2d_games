@@ -6,12 +6,14 @@ class CameraConfig:
     def __init__(self,
                  speed_tiles:float=0.1,
                  zoom_step:int = 2,
+                 pan_edge_size:int = 10,
                  min_tile_size = 10,
                  max_tile_size = 100):
         self.SPEED_TILES:float = speed_tiles # Percentual of the curret visible tiles
         self.ZOOM_STEP = zoom_step
         self.MIN_TILE_SIZE = min_tile_size
         self.MAX_TILE_SIZE = max_tile_size
+        self.PAN_EDGE_SIZE = pan_edge_size
 
 class Camera:
     _self: Self | None = None
@@ -85,14 +87,14 @@ class Camera:
 
         dx = 0
         dy = 0
-        if mx < controls.PAN_EDGE_SIZE:
+        if mx < self.config.PAN_EDGE_SIZE:
             dx = -speed_x
-        elif mx > self.width_pxl - controls.PAN_EDGE_SIZE:
+        elif mx > self.width_pxl - self.config.PAN_EDGE_SIZE:
             dx = speed_x
 
-        if my < controls.PAN_EDGE_SIZE:
+        if my < self.config.PAN_EDGE_SIZE:
             dy = -speed_y
-        elif my > self.height_pxl - controls.PAN_EDGE_SIZE:
+        elif my > self.height_pxl - self.config.PAN_EDGE_SIZE:
             dy = speed_y
 
         self.move(dx, dy)

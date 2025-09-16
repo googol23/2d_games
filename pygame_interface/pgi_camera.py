@@ -1,6 +1,6 @@
 import pygame
 from camera import Camera
-from controls import CAMERA_KEYS, ZOOM_KEYS, PAN_EDGE_SIZE
+from controls import CAMERA_KEYS, ZOOM_KEYS
 
 class PGICameraControl:
     def __init__(self):
@@ -23,15 +23,21 @@ class PGICameraControl:
             if keys[key]:
                 self.camera.zoom(direction)
 
+        for event in pygame.event.get():
+            if event.type == pygame.MOUSEWHEEL:
+                self.camera.zoom(event.y)
+            print(event)
+
+
         # Handle edge-pan
         mx, my = pygame.mouse.get_pos()
         screen_width, screen_height = pygame.display.get_surface().get_size()
 
-        if mx < PAN_EDGE_SIZE:
+        if mx < self.camera.config.PAN_EDGE_SIZE:
             self.camera.move(-1, 0)
-        elif mx > screen_width - PAN_EDGE_SIZE:
+        elif mx > screen_width - self.camera.config.PAN_EDGE_SIZE:
             self.camera.move(1, 0)
-        if my < PAN_EDGE_SIZE:
+        if my < self.camera.config.PAN_EDGE_SIZE:
             self.camera.move(0, -1)
-        elif my > screen_height - PAN_EDGE_SIZE:
+        elif my > screen_height - self.camera.config.PAN_EDGE_SIZE:
             self.camera.move(0, 1)
