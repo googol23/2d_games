@@ -1,5 +1,4 @@
 from world import World
-import controls
 from typing_extensions import Self
 
 class CameraConfig:
@@ -38,12 +37,7 @@ class Camera:
                  height_pxl:int=600,
                  tile_size:int=5,
                  config: CameraConfig | None = None):
-        """
-        :param world: World object reference
-        :param x, y: camera position in tiles (top-left)
-        :param width_pxl, height_pxl: camera size in pixels
-        :param tile_size: pixels per tile
-        """
+        # Allow re-init but keep everything consistent
         self.world = World.get_instance()
         self.x = x
         self.y = y
@@ -58,34 +52,60 @@ class Camera:
         self.width_tls = self.width_pxl / self.tile_size
         self.height_tls = self.height_pxl / self.tile_size
 
-        self.iso_tile_w = tile_size * 2   # full width
-        self.iso_tile_h = tile_size       # full height
-        self.iso_half_w = tile_size       # half width
-        self.iso_half_h = tile_size // 2  # half height
+        # view counts in tiles
+        self._update_view_counts()
 
+        # iso dimensions (floats)
+        self._update_iso_dims()
 
-    # --- Coordinate conversion ---
-    def world_to_screen(self, world_x:float, world_y:float) -> tuple[float,float]:
+    # ---------------- helpers ----------------
+    def _update_view_counts(self):
+        self.width_tls = float(self.width_pxl) / float(self.tile_size)
+        self.height_tls = float(self.height_pxl) / float(self.tile_size)
+
+    def _update_iso_dims(self):
+        # Keep floats to avoid integer truncation
+        self.iso_tile_w = float(self.tile_size * 2.0)   # full diamond width
+        self.iso_tile_h = float(self.tile_size)         # full diamond height
+        self.iso_half_w = self.iso_tile_w / 2.0         # tile_size
+        self.iso_half_h = self.iso_tile_h / 2.0         # tile_size / 2
+
+    def _cam_pixel_offset(self) -> tuple[float, float]:
         """
-        world_x,world_x : world grid coords
-        returns: (screen_x, screen_y) coordinates (ortographic square tile top view)
+        Pixel offset of camera origin (world tile self.x, self.y) in isometric pixel space.
+        cam_px = (cx - cy) * half_w
+        cam_py = (cx + cy) * half_h
         """
+        cam_px = (self.x - self.y) * self.iso_half_w
+        cam_py = (self.x + self.y) * self.iso_half_h
+        return cam_px, cam_py
+
+    def _world_size(self) -> tuple[float, float]:
+        # Safe fallback to handle different World attribute names
+        w = getattr(self.world, "world_size_x", None)
+        h = getattr(self.world, "world_size_y", None)
+        if w is None or h is None:
+            w = getattr(self.world, "width", w)
+            h = getattr(self.world, "height", h)
+        if w is None or h is None:
+            raise AttributeError("World object missing width/height attributes (expected 'width'/'height' or 'world_size_x'/'world_size_y')")
+        return float(w), float(h)
+
+    # --- Coordinate conversion (orthographic kept for compatibility) ---
+    def world_to_screen(self, world_x: float, world_y: float) -> tuple[float, float]:
         screen_x = (world_x - self.x) * self.tile_size
         screen_y = (world_y - self.y) * self.tile_size
         return screen_x, screen_y
 
-    def screen_to_world(self, screen_x:int, screen_y:int) -> tuple[float,float]:
-        """
-        Convert screen pixel coords -> grid coordinates (can be fractional).
-        """
+    def screen_to_world(self, screen_x: int, screen_y: int) -> tuple[float, float]:
         world_x = screen_x / self.tile_size + self.x
         world_y = screen_y / self.tile_size + self.y
         return world_x, world_y
 
+    # --- Isometric conversions (corrected) ---
     def world_to_screen_iso(self, world_x: float, world_y: float) -> tuple[int, int]:
         """
-        Convert grid coordinates -> screen pixel coords (isometric).
-        Returns top vertex of the tile diamond.
+        grid -> screen (isometric). Returns top vertex of the diamond in screen coords.
         """
         screen_x = (world_x - world_y) * self.iso_half_w - self.x * self.iso_half_w * 2
         screen_y = (world_x + world_y) * self.iso_half_h - self.y * self.iso_half_h * 2
@@ -99,7 +119,7 @@ class Camera:
 
     def screen_to_world_iso(self, screen_x: int, screen_y: int) -> tuple[float, float]:
         """
-        Convert screen pixel coords in isometric view -> grid coordinates (can be fractional).
+        screen px -> fractional world grid coords (isometric).
         """
         # Apply the same offset before inverting the isometric projection
         offset_x = self.width_pxl // 2
@@ -154,41 +174,45 @@ class Camera:
         self.x = max(0, min(self.x + dx*speed_x, self.world.world_size_x - self.width_tls))
         self.y = max(0, min(self.y + dy*speed_y, self.world.world_size_y - self.height_tls))
 
-    # --- Mouse-edge panning ---
-    def edge_pan(self, mx, my):
+    def pan(self, dir_x: int, dir_y: int):
         """
-        Pan the camera when mouse is near edges.
-        :param mx: mouse x (px)
-        :param my: mouse y (px)
-        :param factor: fraction of visible tiles to move per frame
+        Pan camera by configuration fraction of visible tiles.
+        dir_x, dir_y should be -1/0/1 (direction signs).
         """
-        speed_x = self.width_tls  * self.config.SPEED_TILES
-        speed_y = self.height_tls * self.config.SPEED_TILES
+        step_x = self.config.SPEED_TILES * self.width_tls * float(dir_x)
+        step_y = self.config.SPEED_TILES * self.height_tls * float(dir_y)
+        self.move(step_x, step_y)
 
-        dx = 0
-        dy = 0
+    def edge_pan(self, mx: int, my: int):
+        """Pan when mouse is near edges — uses pan(dir_x, dir_y)."""
+        dx_sign = 0
+        dy_sign = 0
         if mx < self.config.PAN_EDGE_SIZE:
-            dx = -speed_x
+            dx_sign = -1
         elif mx > self.width_pxl - self.config.PAN_EDGE_SIZE:
-            dx = speed_x
+            dx_sign = 1
 
         if my < self.config.PAN_EDGE_SIZE:
-            dy = -speed_y
+            dy_sign = -1
         elif my > self.height_pxl - self.config.PAN_EDGE_SIZE:
-            dy = speed_y
+            dy_sign = 1
 
-        self.move(dx, dy)
+        if dx_sign != 0 or dy_sign != 0:
+            self.pan(dx_sign, dy_sign)
 
     # --- Zoom ---
-    def zoom(self, direction:int = 1):
+    def zoom(self, direction: int = 1):
         """
-        Zoom in/out camera by changing tile_size while keeping top-left position
-        :param direction: +1 = zoom in, -1 = zoom out
+        Zoom in/out: direction +1 = zoom in (bigger tile_size), -1 = zoom out.
+        Keeps top-left anchored (same self.x,self.y). Updates everything consistently.
         """
-        self.tile_size = max(self.config.MIN_TILE_SIZE, min(self.tile_size + direction*self.config.ZOOM_STEP, self.config.MAX_TILE_SIZE))
-        # Update visible tiles
-        self.width_tls = self.width_pxl / self.tile_size
-        self.height_tls = self.height_pxl / self.tile_size
-        # Clamp to world
-        self.x = max(0, min(self.x, self.world.world_size_x - self.width_tls))
-        self.y = max(0, min(self.y, self.world.world_size_y - self.height_tls))
+        self.tile_size = max(self.config.MIN_TILE_SIZE,
+                             min(self.tile_size + direction * self.config.ZOOM_STEP,
+                                 self.config.MAX_TILE_SIZE))
+        # update derived values
+        self._update_view_counts()
+        self._update_iso_dims()
+        # clamp camera to world bounds
+        w, h = self._world_size()
+        self.x = max(0.0, min(self.x, w - self.width_tls))
+        self.y = max(0.0, min(self.y, h - self.height_tls))
