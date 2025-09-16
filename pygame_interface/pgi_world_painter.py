@@ -12,10 +12,6 @@ class PGIWorldPainter(pygame.sprite.Group):
         self.camera = Camera.get_instance()
         self.tile_sprites = {}  # (x, y) -> PGITilePainter
 
-        self.surface = pygame.Surface(
-            (self.camera.width_pxl, self.camera.height_pxl), pygame.SRCALPHA
-        )
-
         self._visible_range = (0, 0, 0, 0)
         self._last_camera_state = (None, None, None)
 
@@ -53,9 +49,8 @@ class PGIWorldPainter(pygame.sprite.Group):
                     sprite.update_image(tile_size)
                     sprite.update_position(self.camera)
 
-    def draw(self) -> pygame.Surface:
+    def draw(self, surface:pygame.Surface):
         """Draw only visible sprites onto self.surface using Group.draw()."""
-        self.surface.fill((0, 0, 0, 0))
         # Create a temporary group for visible sprites
         start_x, end_x, start_y, end_y = self._visible_range
         visible_sprites = [
@@ -64,9 +59,7 @@ class PGIWorldPainter(pygame.sprite.Group):
             for x in range(start_x, end_x)
             if (x, y) in self.tile_sprites
         ]
-        # draw() requires a surface and optionally a rect dict (we ignore)
-        pygame.sprite.Group(visible_sprites).draw(self.surface)
-        return self.surface
+        pygame.sprite.Group(visible_sprites).draw(surface)
 
     def reset(self):
         """Call this when the world regenerates."""

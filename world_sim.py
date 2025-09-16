@@ -32,9 +32,9 @@ for name, log_obj in logging.root.manager.loggerDict.items():
         log_obj.setLevel(logging.DEBUG)
 
 # --- Configuration ---
-FPS = 60
+FPS = 120
 SCREEN_WIDTH, SCREEN_HEIGHT = 1600, 1000
-WORLD_WIDTH, WORLD_HEIGHT = 1600, 1000
+WORLD_WIDTH, WORLD_HEIGHT = 160, 100
 
 # --- Initialize world ---
 World(world_size_x=WORLD_WIDTH, world_size_y=WORLD_HEIGHT).generate()
@@ -56,25 +56,21 @@ clock = pygame.time.Clock()
 
 # --- Camera ---
 camera = Camera(x=0, y=0, width_pxl=SCREEN_WIDTH, height_pxl=SCREEN_HEIGHT)
-camera_control = PGICameraControl()
 
 # --- Minimap ---
-minimap = MiniMap(size=200, position=(SCREEN_WIDTH - 210, 10))
+minimap = MiniMap(size=SCREEN_WIDTH//8, position=(SCREEN_WIDTH - 200, 10))
 
 # --- Initialize Manager ---
 manager = Manager(agents=all_agents)
 
 # --- Layers ---
+surface_world_terrains = pygame.Surface((camera.width_pxl,camera.height_pxl), pygame.SRCALPHA)
+surface_game_interface = pygame.Surface((camera.width_pxl,camera.height_pxl), pygame.SRCALPHA)
+
 world_painter = PGIWorldPainter()
 
-# layer_world_elements = Layer(SCREEN_WIDTH, SCREEN_HEIGHT, transparent=True)
-# for agent in all_agents:
-    # layer_world_elements.add_sprite(PGIWorldObjectPainter(agent))
-    # layer_world_elements.add(agent)
-layer_game_interface = Layer(SCREEN_WIDTH, SCREEN_HEIGHT, transparent=True)
-layer_game_interface.add(PGIAgentPathPainter(manager=manager))
-
 # --- Pygame interfaceing ---
+camera_control = PGICameraControl()
 pgi_selector = PGISelectionController(selection_manager=manager.selection)
 agent_controler = PGIAgentControl(manager=manager)
 
@@ -87,8 +83,13 @@ try:
     manager.resume()
     running = True
     while running:
-        events = pygame.event.get()
+        screen.fill((0, 0, 0))  # clear the screen each frame
+        surface_world_terrains.fill((0, 0, 0, 0))
+        # surface_game_interface.fill((0, 0, 0, 0))
 
+        events = pygame.event.get()
+        keys = pygame.key.get_pressed()
+        mouse_pos = pygame.mouse.get_pos()
 
         for event in events:
             if event.type == pygame.QUIT:
@@ -106,39 +107,38 @@ try:
 
         # update selection
         pgi_selector.handle_events(events, manager.get_agents())
-        agent_controler.command_agents(events)
-
-        # Control camera
-        camera_control.handle_actions()
-
-        # Click on minimap handling
-        if pygame.mouse.get_pressed()[0]:
-            minimap.handle_click(pygame.mouse.get_pos())
+        # agent_controler.command_agents(events)
 
         # Update the world and agents
         manager.update()  # dt calculated automatically
 
+        # Control camera
+        camera_control.handle_actions(events,keys,mouse_pos)
+
+        # Minimap handling
+        if pygame.mouse.get_pressed()[0]:
+            minimap.handle_click(pygame.mouse.get_pos())
+
         # --- Render ---
         world_painter.update()
-        world_surfice = world_painter.draw()
+        world_painter.draw(surface_world_terrains)
 
-        # layer_world_terrains.draw()
-        # layer_world_elements.draw()
-        # layer_game_interface.draw()
-
-        pgi_selector.draw_drag_box(layer_game_interface.surface)
+        pgi_selector.draw_drag_box(surface_game_interface)
+        minimap.draw(surface_game_interface)
 
         # --- Composite layers ---
-        # screen.blit(layer_world_terrains.surface, (0, 0))
-        # screen.blit(layer_world_elements.surface, (0, 0))
-        screen.blit(world_surfice, (0, 0))
-        screen.blit(layer_game_interface.surface, (0, 0))
-        # Draw minimap on screen
-        screen.blit(minimap.render(), minimap.position)
+        screen.blit(surface_world_terrains, (0, 0))
+        screen.blit(surface_game_interface, (0, 0))
 
 
-        text_surface = pygame.font.SysFont(None, 40).render(f"{manager.days:.2f}", True, (255,0,0))
+        text_surface = pygame.font.SysFont(None, 40).render(f"Days: {manager.days:.2f}", True, (255,0,0))
         screen.blit(text_surface, (0, 0))
+
+        # Monitor FPS
+        fps_text = pygame.font.SysFont(None, 24).render(f"FPS: {int(clock.get_fps())}", True, (255, 255, 255))
+        rect = pygame.Rect(SCREEN_WIDTH - 90, SCREEN_HEIGHT-40, 80, 30)
+        pygame.draw.rect(screen, (0, 0, 0), rect)
+        screen.blit(fps_text, (SCREEN_WIDTH - 80, SCREEN_HEIGHT-30))
 
         # --- Overlay ---
         pygame.display.flip()

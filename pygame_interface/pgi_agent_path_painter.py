@@ -7,7 +7,7 @@ class PGIAgentPathPainter:
     def __init__(self, manager: Manager | None = None):
         self.manager: Manager = manager
 
-    def render(self, surface):
+    def draw(self, surface):
         camera:Camera = Camera.get_instance()
 
         if not self.manager:
