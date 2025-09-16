@@ -1,5 +1,6 @@
 from world import World
 from typing_extensions import Self
+from functools import cached_property
 
 class CameraConfig:
     def __init__(self,
@@ -37,7 +38,10 @@ class Camera:
                  height_pxl:int=600,
                  tile_size:int=5,
                  config: CameraConfig | None = None):
-        # Allow re-init but keep everything consistent
+        if getattr(self, "_initialized", False):
+            return
+        self._initialized = True
+
         self.world = World.get_instance()
         self.x = x
         self.y = y
@@ -81,28 +85,25 @@ class Camera:
         return cam_px, cam_py
 
     def _world_size(self) -> tuple[float, float]:
-        # Safe fallback to handle different World attribute names
         w = getattr(self.world, "world_size_x", None)
         h = getattr(self.world, "world_size_y", None)
         if w is None or h is None:
             w = getattr(self.world, "width", w)
             h = getattr(self.world, "height", h)
         if w is None or h is None:
-            raise AttributeError("World object missing width/height attributes (expected 'width'/'height' or 'world_size_x'/'world_size_y')")
+            raise AttributeError("World object missing width/height attributes")
         return float(w), float(h)
 
-    # --- Coordinate conversion (orthographic kept for compatibility) ---
+    # --- Coordinate conversion (orthographic) ---
     def world_to_screen(self, world_x: float, world_y: float) -> tuple[float, float]:
         screen_x = (world_x - self.x) * self.tile_size
         screen_y = (world_y - self.y) * self.tile_size
         return screen_x, screen_y
 
     def screen_to_world(self, screen_x: int, screen_y: int) -> tuple[float, float]:
-        world_x = screen_x / self.tile_size + self.x
-        world_y = screen_y / self.tile_size + self.y
-        return world_x, world_y
+        return screen_x / self.tile_size + self.x, screen_y / self.tile_size + self.y
 
-    # --- Isometric conversions (corrected) ---
+    # --- Isometric conversions ---
     def world_to_screen_iso(self, world_x: float, world_y: float) -> tuple[int, int]:
         """
         grid -> screen (isometric). Returns top vertex of the diamond in screen coords.
@@ -175,44 +176,22 @@ class Camera:
         self.y = max(0, min(self.y + dy*speed_y, self.world.world_size_y - self.height_tls))
 
     def pan(self, dir_x: int, dir_y: int):
-        """
-        Pan camera by configuration fraction of visible tiles.
-        dir_x, dir_y should be -1/0/1 (direction signs).
-        """
-        step_x = self.config.SPEED_TILES * self.width_tls * float(dir_x)
-        step_y = self.config.SPEED_TILES * self.height_tls * float(dir_y)
+        step_x = self.config.SPEED_TILES * self.width_tls * dir_x
+        step_y = self.config.SPEED_TILES * self.height_tls * dir_y
         self.move(step_x, step_y)
 
     def edge_pan(self, mx: int, my: int):
-        """Pan when mouse is near edges — uses pan(dir_x, dir_y)."""
-        dx_sign = 0
-        dy_sign = 0
-        if mx < self.config.PAN_EDGE_SIZE:
-            dx_sign = -1
-        elif mx > self.width_pxl - self.config.PAN_EDGE_SIZE:
-            dx_sign = 1
-
-        if my < self.config.PAN_EDGE_SIZE:
-            dy_sign = -1
-        elif my > self.height_pxl - self.config.PAN_EDGE_SIZE:
-            dy_sign = 1
-
+        dx_sign = -1 if mx < self.config.PAN_EDGE_SIZE else 1 if mx > self.width_pxl - self.config.PAN_EDGE_SIZE else 0
+        dy_sign = -1 if my < self.config.PAN_EDGE_SIZE else 1 if my > self.height_pxl - self.config.PAN_EDGE_SIZE else 0
         if dx_sign != 0 or dy_sign != 0:
             self.pan(dx_sign, dy_sign)
 
     # --- Zoom ---
     def zoom(self, direction: int = 1):
-        """
-        Zoom in/out: direction +1 = zoom in (bigger tile_size), -1 = zoom out.
-        Keeps top-left anchored (same self.x,self.y). Updates everything consistently.
-        """
         self.tile_size = max(self.config.MIN_TILE_SIZE,
                              min(self.tile_size + direction * self.config.ZOOM_STEP,
                                  self.config.MAX_TILE_SIZE))
-        # update derived values
-        self._update_view_counts()
-        self._update_iso_dims()
-        # clamp camera to world bounds
+        # clamp camera to world
         w, h = self._world_size()
         self.x = max(0.0, min(self.x, w - self.width_tls))
         self.y = max(0.0, min(self.y, h - self.height_tls))
