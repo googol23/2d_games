@@ -73,8 +73,6 @@ class MiniMap:
             world_x = rel_x / self.size * world.world_size_x
             world_y = rel_y / self.size * world.world_size_y
 
-            # Convert to camera coordinates in pixels
-            camera.x = max(0, min((world_x - camera.width_tls / 2) * camera.tile_size,
-                                       world.world_size_x * camera.tile_size - camera.width_pxl))
-            camera.y = max(0, min((world_y - camera.height_tls / 2) * camera.tile_size,
-                                       world.world_size_y * camera.tile_size - camera.height_pxl))
+            camera.x = max(0, min(world_x - camera.width_tls / 2, world.world_size_x - camera.width_tls))
+            camera.y = max(0, min(world_y - camera.height_tls / 2, world.world_size_y - camera.height_tls))
+

@@ -6,7 +6,6 @@ import pygame
 import logging
 import sys
 import threading
-import time
 
 import controls
 from camera import Camera
@@ -65,23 +64,6 @@ minimap = MiniMap(size=200, position=(SCREEN_WIDTH - 210, 10))
 # --- Initialize Manager ---
 manager = Manager(agents=all_agents)
 
-# --- Layers ---
-layer_world_terrains = Layer(SCREEN_WIDTH, SCREEN_HEIGHT, transparent=True)
-layer_world_terrains.add(PGIWorldPainter())
-
-layer_world_elements = Layer(SCREEN_WIDTH, SCREEN_HEIGHT, transparent=True)
-for agent in all_agents:
-    layer_world_elements.add(agent)
-
-layer_game_interface = Layer(SCREEN_WIDTH, SCREEN_HEIGHT, transparent=True)
-layer_game_interface.add(PGIAgentPathPainter(manager=manager))
-
-pgi_selector = PGISelectionController(selection_manager=manager.selection)
-agent_controler = PGIAgentControl(manager=manager)
-
-# --- Overlay ---
-show_overlay = False
-
 # --- Loading screen ---
 progress = 0
 total = 1
@@ -119,14 +101,29 @@ try:
 
     thread.join()  # ensure precompute is fully finished
     logger.info("WorldPainter precomputation done!")
-    world_painter._last_cam_x = None  # or any value different from camera.x
+    world_painter._last_cam_x = None
     world_painter._last_cam_y = None
     world_painter._last_tile_size = None
 except Exception as e:
     print(e)
     traceback.print_exc()
 
+# --- Layers ---
+layer_world_terrains = Layer(SCREEN_WIDTH, SCREEN_HEIGHT, transparent=True)
+layer_world_terrains.add(world_painter)
 
+layer_world_elements = Layer(SCREEN_WIDTH, SCREEN_HEIGHT, transparent=True)
+for agent in all_agents:
+    layer_world_elements.add(agent)
+
+layer_game_interface = Layer(SCREEN_WIDTH, SCREEN_HEIGHT, transparent=True)
+layer_game_interface.add(PGIAgentPathPainter(manager=manager))
+
+pgi_selector = PGISelectionController(selection_manager=manager.selection)
+agent_controler = PGIAgentControl(manager=manager)
+
+# --- Overlay ---
+show_overlay = False
 
 # --- Main loop ---
 try:
