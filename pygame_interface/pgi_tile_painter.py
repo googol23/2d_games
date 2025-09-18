@@ -1,6 +1,8 @@
 import pygame
-from functools import cached_property
 from world import Tile  # your Tile class
+
+# shared cache for all painters
+_TEXTURE_CACHE = {}
 
 class PGITilePainter(pygame.sprite.Sprite):
     """Sprite wrapper for a Tile with caching of rendered image."""
@@ -15,12 +17,32 @@ class PGITilePainter(pygame.sprite.Sprite):
         self.image = pygame.Surface((1, 1), pygame.SRCALPHA)
         self.rect = self.image.get_rect()
 
-    def _render_surface(self, tile_size: int) -> pygame.Surface:
-        """Render tile surface as a square, optionally draw terrain name."""
-        surf = pygame.Surface((tile_size, tile_size), pygame.SRCALPHA)
-        color = (0, 128, 0) if self.tile.terrain is None else getattr(self.tile.terrain, "color", (0,128,0))
-        pygame.draw.rect(surf, color, surf.get_rect())
+    def _get_texture(self, path: str, size: int) -> pygame.Surface | None:
+        """Load and scale texture with caching."""
+        key = (path, size)
+        if key not in _TEXTURE_CACHE:
+            try:
+                tex = pygame.image.load(path).convert_alpha()
+                tex = pygame.transform.smoothscale(tex, (size, size))
+                _TEXTURE_CACHE[key] = tex
+            except Exception as e:
+                print(f"Failed to load texture {path}: {e}")
+                return None
+        return _TEXTURE_CACHE[key]
 
+    def _render_surface(self, tile_size: int) -> pygame.Surface:
+        """Render tile surface from texture if available, else solid color."""
+        if self.tile.terrain:
+            texture_path = getattr(self.tile.terrain, "texture", None)
+            if texture_path:
+                tex = self._get_texture(texture_path, tile_size)
+                if tex:
+                    return tex
+
+        # fallback dummy color
+        surf = pygame.Surface((tile_size, tile_size), pygame.SRCALPHA)
+        color = getattr(self.tile.terrain, "color", (0, 128, 0))
+        pygame.draw.rect(surf, color, surf.get_rect())
         return surf
 
     def update_image(self, tile_size: int):
@@ -34,4 +56,3 @@ class PGITilePainter(pygame.sprite.Sprite):
 
     def update_position(self, camera):
         self.rect.topleft = tuple(map(int, camera.world_to_screen(self.tile_x, self.tile_y)))
-

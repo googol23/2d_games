@@ -12,6 +12,7 @@ from .topology import generate_topological_map, visualize_topological_map
 import logging
 logger = logging.getLogger(__name__)
 
+
 class World:
     """
     Represents the game world, responsible for generation.
@@ -35,8 +36,10 @@ class World:
         logger.info(" ... pre-allocating world tiles")
         size = world_size_x * world_size_y
         self.tiles = [Tile() for _ in range(size)]
-        self.obstacle_map = np.zeros((self.world_size_y, self.world_size_x), dtype=bool)
 
+        # self.elements:dict[int, WorldObject] = {}
+
+        self.obstacle_map = np.zeros((self.world_size_y, self.world_size_x), dtype=bool)
         load_terrains_data()
 
 
@@ -322,3 +325,18 @@ class World:
                 self.water_map[x, y] = 1  # consistent indexing
 
         return len(river_path)
+
+    def populate_trees(self):
+        for tile in self.tiles:
+            n_of_trees = 0
+
+            if tile.terrain.name == "forest":
+                n_of_trees = random.randint(5,10)
+            elif tile.terrain.name == "grassland":
+                n_of_trees = random.randint(1,3)
+
+            # for i in range(n_of_trees):
+            #     tree = Tree(model=TREE_DATA["pine"])
+
+            #     # Place at random available posiiton
+            #     self.elements[tree.id] = tree

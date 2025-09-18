@@ -8,8 +8,8 @@ class CameraConfig:
         speed_tiles: float = 0.1,
         zoom_step: int = 2,
         pan_edge_size: int = 10,
-        min_tile_size: int = 16,
-        max_tile_size: int = 128,
+        min_tile_size: int = 64,
+        max_tile_size: int = 256,
     ):
         self.SPEED_TILES = speed_tiles      # Percent of visible tiles per move
         self.ZOOM_STEP = zoom_step

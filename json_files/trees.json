@@ -15,7 +15,8 @@
         "temp_range": [5, 28],
         "log_yield": 25,
         "seed_yield": 100,
-        "wood_type": "softwood"
+        "wood_type": "softwood",
+        "texture": "./textures/elements/tree/pine_01.png"
     },
     "Birch": {
         "description": "Deciduous tree with white bark, useful for furniture.",

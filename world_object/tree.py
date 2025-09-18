@@ -16,6 +16,7 @@ class TreeModel(BaseModel):
     wood_type: str
     description: str = ""
     unlocked: bool = True
+    texture: str | None = None
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 
@@ -31,6 +32,7 @@ class Tree(WorldObject):
         self.wood_type = model.wood_type
         self.description = model.description
         self.unlocked = model.unlocked
+        self.texture = model.texture
 
         self.age = self.growth_rate
         self.hp = (1+0.5*int(self.wood_type == "hardwood")) * self.age

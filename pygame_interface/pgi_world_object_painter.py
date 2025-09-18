@@ -3,6 +3,11 @@ from camera import Camera
 from world_object import WorldObject
 from pathlib import Path
 
+from manager import Manager
+
+import logging
+logger = logging.getLogger("pgi")
+
 class PGIWorldObjectPainter(pygame.sprite.Sprite):
     """
     Sprite wrapper for a WorldObject.
@@ -10,10 +15,11 @@ class PGIWorldObjectPainter(pygame.sprite.Sprite):
     Draws the object's name above the rectangle/texture.
     """
 
-    def __init__(self, obj: WorldObject):
+    def __init__(self, obj: WorldObject, manager:Manager):
         super().__init__()
         self.obj = obj
-        self.camera = Camera.get_instance()
+        self.manager:Manager = manager
+        self.camera:Camera = Camera.get_instance()
         self.image = None
         self.rect = None
 
@@ -34,24 +40,24 @@ class PGIWorldObjectPainter(pygame.sprite.Sprite):
     def update_image(self, tile_size: int):
         """
         Update sprite image based on tile_size.
-        Uses cached texture if available, otherwise draws a rectangle.
-        Draws the object's name above the figure.
+        Draws the object (texture or rectangle) centered at obj.x, obj.y,
+        name above it, and red border if selected.
         """
-        # Font for the name
+        # Font for name
         font_size = max(12, self.camera.height_pxl // 40)
         font = pygame.font.SysFont(None, font_size)
         obj_name = str(getattr(self.obj, "name", f"{self.obj.x},{self.obj.y}"))
         text_surface = font.render(obj_name, True, (255, 255, 255))
 
-        # Surface size: width is max(tile_size, text width), height = tile_size + text height
+        # Surface size: enough for rectangle + text above
         surface_width = max(tile_size, text_surface.get_width())
         total_height = tile_size + text_surface.get_height()
         self.image = pygame.Surface((surface_width, total_height), pygame.SRCALPHA)
 
         shape_x = (surface_width - tile_size) // 2
-        shape_y = text_surface.get_height()
+        shape_y = text_surface.get_height()  # rectangle starts after text
 
-        # Draw object: texture or rectangle
+        # Draw object
         if self._texture:
             texture_scaled = pygame.transform.smoothscale(self._texture, (tile_size, tile_size))
             self.image.blit(texture_scaled, (shape_x, shape_y))
@@ -63,8 +69,15 @@ class PGIWorldObjectPainter(pygame.sprite.Sprite):
         text_x = (surface_width - text_surface.get_width()) // 2
         self.image.blit(text_surface, (text_x, 0))
 
-        # Update rect
-        self.rect = self.image.get_rect()
+        # Draw red border if selected
+        if getattr(self.obj, "id", None) in self.manager.selection:
+            border_rect = pygame.Rect(shape_x, shape_y, tile_size, tile_size)
+            pygame.draw.rect(self.image, (0, 0, 255), border_rect, width=2)
+
+        # Update rect to center on obj.x, obj.y in world coords
+        screen_x, screen_y = self.camera.world_to_screen(self.obj.x, self.obj.y)
+        self.rect = self.image.get_rect(center=(screen_x, screen_y))
+
 
     def update_position(self, camera: Camera):
         """

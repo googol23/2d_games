@@ -6,7 +6,7 @@ import logging
 logger = logging.getLogger("pgi")
 
 class PGISelectionController:
-    def __init__(self, selection_manager: SelectionManager, box_size: float=20):
+    def __init__(self, selection_manager: SelectionManager, box_size: float=2):
         """
         Args:
             selection_manager (SelectionManager): your selection backend

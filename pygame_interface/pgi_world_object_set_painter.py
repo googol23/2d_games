@@ -46,7 +46,7 @@ class PGIWorldObjectSetPainter(pygame.sprite.Group):
         for obj in self._visible_objects:
             key = id(obj)
             if key not in self.object_sprites:
-                sprite = PGIWorldObjectPainter(obj)
+                sprite = PGIWorldObjectPainter(obj, self.manager)
                 sprite.update_image(tile_size)
                 sprite.update_position(self.camera)
                 self.object_sprites[key] = sprite

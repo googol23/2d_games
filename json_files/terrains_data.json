@@ -9,7 +9,8 @@
     "name": "lake",
     "resources": ["fish", "clay"],
     "vegetation": ["algae"],
-    "color": [0, 160, 220]
+    "color": [0, 160, 220],
+    "texture": "./textures/terrains/water/lake_00.png"
   },
   {
     "name": "river",
@@ -21,7 +22,8 @@
     "name": "ocean",
     "resources": ["fish", "salt"],
     "vegetation": ["seaweed"],
-    "color": [0, 70, 150]
+    "color": [0, 70, 150],
+    "texture": "./textures/terrains/water/ocean_00.png"
   },
   {
     "name": "mountain",
@@ -57,7 +59,8 @@
     "name": "grassland",
     "resources": ["Potassium", "Phosphorus", "Calcium", "Magnesium"],
     "vegetation": ["grass", "wildflower", "shrub"],
-    "color": [124, 252, 0]
+    "color": [124, 252, 0],
+    "texture": "./textures/terrains/grassland/grassland.png"
   },
   {
     "name": "ice_cap",
