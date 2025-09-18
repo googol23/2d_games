@@ -29,11 +29,11 @@ class MiniMap:
     def draw(self, surface:pygame.Surface | None = None):
 
         if self.needs_redraw:
-            tile_w = self.size / self.world.world_size_x
-            tile_h = self.size / self.world.world_size_y
+            tile_w = self.size / self.world.size_x
+            tile_h = self.size / self.world.size_y
 
-            for y in range(self.world.world_size_y):
-                for x in range(self.world.world_size_x):
+            for y in range(self.world.size_y):
+                for x in range(self.world.size_x):
                     tile = self.world.get_tile(x, y)
                     color = tile.terrain.color if tile.terrain else (87, 87, 87)
                     rect = pygame.Rect(x * tile_w, y * tile_h, tile_w + 1, tile_h + 1)
@@ -41,8 +41,8 @@ class MiniMap:
 
             self.needs_redraw = False
 
-        scale_x = self.size / self.world.world_size_x
-        scale_y = self.size / self.world.world_size_y
+        scale_x = self.size / self.world.size_x
+        scale_y = self.size / self.world.size_y
         cam_rect = pygame.Rect(
             self.camera.x * scale_x,
             self.camera.y * scale_y,
@@ -65,9 +65,9 @@ class MiniMap:
             rel_y = my - py
 
             # Map to world tiles
-            world_x = rel_x / self.size * self.world.world_size_x
-            world_y = rel_y / self.size * self.world.world_size_y
+            world_x = rel_x / self.size * self.world.size_x
+            world_y = rel_y / self.size * self.world.size_y
 
-            self.camera.x = max(0, min(world_x - self.camera.width_tls / 2, self.world.world_size_x - self.camera.width_tls))
-            self.camera.y = max(0, min(world_y - self.camera.height_tls / 2, self.world.world_size_y - self.camera.height_tls))
+            self.camera.x = max(0, min(world_x - self.camera.width_tls / 2, self.world.size_x - self.camera.width_tls))
+            self.camera.y = max(0, min(world_y - self.camera.height_tls / 2, self.world.size_y - self.camera.height_tls))
 

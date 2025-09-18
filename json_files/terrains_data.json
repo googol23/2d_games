@@ -10,7 +10,7 @@
     "resources": ["fish", "clay"],
     "vegetation": ["algae"],
     "color": [0, 160, 220],
-    "texture": "./textures/terrains/water/lake_00.png"
+    "texture": "./textures/terrains/lake/lake_00.png"
   },
   {
     "name": "river",
@@ -23,7 +23,7 @@
     "resources": ["fish", "salt"],
     "vegetation": ["seaweed"],
     "color": [0, 70, 150],
-    "texture": "./textures/terrains/water/ocean_00.png"
+    "texture": "./textures/terrains/ocean/ocean_00.png"
   },
   {
     "name": "mountain",

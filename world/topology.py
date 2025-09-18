@@ -14,7 +14,7 @@ def compute_gaussians(X, Y, centers, sigmas, amplitudes):
                 Z[j, k] += amp * np.exp(-(((X[j,k]-cx)**2)/(2*sigma_x**2) + ((Y[j,k]-cy)**2)/(2*sigma_y**2)))
     return Z
 
-def generate_topological_map(width, height, n_of_peaks=5, seed=None):
+def generate_topological_map(width, height, n_of_peaks=5, seed=None) -> np.ndarray:
     if seed is not None:
         np.random.seed(seed)
 

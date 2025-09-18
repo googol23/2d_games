@@ -17,7 +17,7 @@ class PGIAgentControl:
     def __init__(self, manager: Manager):
         self.camera: Camera = Camera.get_instance()
         self.manager: Manager = manager
-        self.path_finder = Pathfinder(self.manager.world)
+        self.path_finder = Pathfinder()
 
     def command_agents(self, events):
         if len(self.manager.selection) == 0:

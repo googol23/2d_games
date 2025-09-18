@@ -70,11 +70,11 @@ class Camera:
 
     @property
     def world_width(self) -> float:
-        return float(getattr(self.world, "world_size_x", getattr(self.world, "width", 0)))
+        return float(getattr(self.world, "size_x", getattr(self.world, "width", 0)))
 
     @property
     def world_height(self) -> float:
-        return float(getattr(self.world, "world_size_y", getattr(self.world, "height", 0)))
+        return float(getattr(self.world, "size_y", getattr(self.world, "height", 0)))
 
     # ---------------- coordinate conversion ----------------
     def world_to_screen(self, world_x: float, world_y: float) -> tuple[int, int]:

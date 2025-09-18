@@ -1,4 +1,4 @@
-from world import World
+from world import World, WorldGen, WorldGenConfig
 from minimap import MiniMap
 
 import traceback
@@ -37,7 +37,16 @@ SCREEN_WIDTH, SCREEN_HEIGHT = 1600, 1000
 WORLD_WIDTH, WORLD_HEIGHT = 160, 100
 
 # --- Initialize world ---
-World(world_size_x=WORLD_WIDTH, world_size_y=WORLD_HEIGHT).generate()
+world_config = WorldGenConfig(  SIZE_X=100,
+                                SIZE_Y=100,
+                                SCALE =10,
+                                TILE_SUBDIVISIONS=10,
+                                WATER_RATIO=0.15,
+                                MOUNTAIN_RATIO=0.15,
+                                ICE_CAP_RATIO=0.01
+                              )
+world_gentor = WorldGen(config=world_config)
+World(world_gentor).generate()
 
 # --- Initialize agents ---
 rowan = Human("Rowan", age=20)

@@ -21,9 +21,9 @@ class PGIWorldPainter(pygame.sprite.Group):
             return
 
         start_x = max(int(cam.x), 0)
-        end_x = min(int(cam.x + cam.width_tls + 1), self.world.world_size_x)
+        end_x = min(int(cam.x + cam.width_tls + 1), self.world.size_x)
         start_y = max(int(cam.y), 0)
-        end_y = min(int(cam.y + cam.height_tls + 1), self.world.world_size_y)
+        end_y = min(int(cam.y + cam.height_tls + 1), self.world.size_y)
 
         self._visible_range = (start_x, end_x, start_y, end_y)
         self._last_camera_state = (cam.x, cam.y, cam.tile_size)

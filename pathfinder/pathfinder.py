@@ -89,14 +89,14 @@ def astar_find_path(start_x: int, start_y: int, goal_x: int, goal_y: int,
 # ------------------- Pathfinder Wrapper -------------------
 class Pathfinder:
     """Wrapper for A* pathfinding in a World."""
-    
-    def __init__(self, world: World):
-        self.world = world
+
+    def __init__(self):
+        world = World.get_instance()
         # Convert height and obstacle maps to NumPy arrays
-        self.height_map = np.array(world.height_map, dtype=np.float64)
-        self.obstacle_map = np.array(world.obstacle_map, dtype=np.bool_)
-        self.width = world.world_size_x
-        self.height = world.world_size_y
+        self.height_map = np.array(world.topology, dtype=np.float64)
+        self.obstacle_map = np.array(world.obstacle, dtype=np.bool_)
+        self.width = world.size_x
+        self.height = world.size_y
 
     def find_path(self, start: tuple[float, float], goal: tuple[float, float], agent: Agent) -> list[tuple[float, float]] | None:
         """

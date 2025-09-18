@@ -2,10 +2,10 @@ from world_object import WorldObject
 import numpy as np
 
 class WorldElements:
-    def __init__(self, world_size_x:int, world_size_y:int, subdivisions:int = 10):
+    def __init__(self, size_x:int, size_y:int, subdivisions:int = 10):
         """ This represent a finder grid of the World by partitioning each tile in subdivisions """
-        self.size_x: int = world_size_x * subdivisions
-        self.size_y: int = world_size_y * subdivisions
+        self.size_x: int = size_x * subdivisions
+        self.size_y: int = size_y * subdivisions
         self.subdivisions = subdivisions
 
         self.grid = np.full((self.size_x,self.size_y), -1, dtype=int) # 2D grid to store objects id that and block the cell(subtile)

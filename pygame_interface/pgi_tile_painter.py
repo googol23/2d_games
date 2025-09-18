@@ -9,7 +9,7 @@ class PGITilePainter(pygame.sprite.Sprite):
 
     def __init__(self, tile: Tile, x: int, y: int):
         super().__init__()
-        self.tile = tile
+        self.tile:Tile = tile
         self.tile_x = x
         self.tile_y = y
         self._last_tile_size = None
