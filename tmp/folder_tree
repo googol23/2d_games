@@ -1,0 +1,151 @@
+male_human
+├── animations
+│   ├── running-8-frames
+│   │   ├── east
+│   │   │   ├── frame_000.png
+│   │   │   ├── frame_001.png
+│   │   │   ├── frame_002.png
+│   │   │   ├── frame_003.png
+│   │   │   ├── frame_004.png
+│   │   │   ├── frame_005.png
+│   │   │   ├── frame_006.png
+│   │   │   └── frame_007.png
+│   │   ├── north
+│   │   │   ├── frame_000.png
+│   │   │   ├── frame_001.png
+│   │   │   ├── frame_002.png
+│   │   │   ├── frame_003.png
+│   │   │   ├── frame_004.png
+│   │   │   ├── frame_005.png
+│   │   │   ├── frame_006.png
+│   │   │   └── frame_007.png
+│   │   ├── north-east
+│   │   │   ├── frame_000.png
+│   │   │   ├── frame_001.png
+│   │   │   ├── frame_002.png
+│   │   │   ├── frame_003.png
+│   │   │   ├── frame_004.png
+│   │   │   ├── frame_005.png
+│   │   │   ├── frame_006.png
+│   │   │   └── frame_007.png
+│   │   ├── north-west
+│   │   │   ├── frame_000.png
+│   │   │   ├── frame_001.png
+│   │   │   ├── frame_002.png
+│   │   │   ├── frame_003.png
+│   │   │   ├── frame_004.png
+│   │   │   ├── frame_005.png
+│   │   │   ├── frame_006.png
+│   │   │   └── frame_007.png
+│   │   ├── south
+│   │   │   ├── frame_000.png
+│   │   │   ├── frame_001.png
+│   │   │   ├── frame_002.png
+│   │   │   ├── frame_003.png
+│   │   │   ├── frame_004.png
+│   │   │   ├── frame_005.png
+│   │   │   ├── frame_006.png
+│   │   │   └── frame_007.png
+│   │   ├── south-east
+│   │   │   ├── frame_000.png
+│   │   │   ├── frame_001.png
+│   │   │   ├── frame_002.png
+│   │   │   ├── frame_003.png
+│   │   │   ├── frame_004.png
+│   │   │   ├── frame_005.png
+│   │   │   ├── frame_006.png
+│   │   │   └── frame_007.png
+│   │   ├── south-west
+│   │   │   ├── frame_000.png
+│   │   │   ├── frame_001.png
+│   │   │   ├── frame_002.png
+│   │   │   ├── frame_003.png
+│   │   │   ├── frame_004.png
+│   │   │   ├── frame_005.png
+│   │   │   ├── frame_006.png
+│   │   │   └── frame_007.png
+│   │   └── west
+│   │       ├── frame_000.png
+│   │       ├── frame_001.png
+│   │       ├── frame_002.png
+│   │       ├── frame_003.png
+│   │       ├── frame_004.png
+│   │       ├── frame_005.png
+│   │       ├── frame_006.png
+│   │       └── frame_007.png
+│   └── walking-8-frames
+│       ├── east
+│       │   ├── frame_000.png
+│       │   ├── frame_001.png
+│       │   ├── frame_002.png
+│       │   ├── frame_003.png
+│       │   ├── frame_004.png
+│       │   ├── frame_005.png
+│       │   ├── frame_006.png
+│       │   └── frame_007.png
+│       ├── north
+│       │   ├── frame_000.png
+│       │   ├── frame_001.png
+│       │   ├── frame_002.png
+│       │   ├── frame_003.png
+│       │   ├── frame_004.png
+│       │   ├── frame_005.png
+│       │   ├── frame_006.png
+│       │   └── frame_007.png
+│       ├── north-east
+│       │   ├── frame_000.png
+│       │   ├── frame_001.png
+│       │   ├── frame_002.png
+│       │   ├── frame_003.png
+│       │   ├── frame_004.png
+│       │   ├── frame_005.png
+│       │   ├── frame_006.png
+│       │   └── frame_007.png
+│       ├── north-west
+│       │   ├── frame_000.png
+│       │   ├── frame_001.png
+│       │   ├── frame_002.png
+│       │   ├── frame_003.png
+│       │   ├── frame_004.png
+│       │   ├── frame_005.png
+│       │   ├── frame_006.png
+│       │   └── frame_007.png
+│       ├── south
+│       │   ├── frame_000.png
+│       │   ├── frame_001.png
+│       │   ├── frame_002.png
+│       │   ├── frame_003.png
+│       │   ├── frame_004.png
+│       │   ├── frame_005.png
+│       │   ├── frame_006.png
+│       │   └── frame_007.png
+│       ├── south-east
+│       │   ├── frame_000.png
+│       │   ├── frame_001.png
+│       │   ├── frame_002.png
+│       │   ├── frame_003.png
+│       │   ├── frame_004.png
+│       │   ├── frame_005.png
+│       │   ├── frame_006.png
+│       │   └── frame_007.png
+│       ├── south-west
+│       │   ├── frame_000.png
+│       │   ├── frame_001.png
+│       │   ├── frame_002.png
+│       │   ├── frame_003.png
+│       │   ├── frame_004.png
+│       │   ├── frame_005.png
+│       │   ├── frame_006.png
+│       │   └── frame_007.png
+│       └── west
+│           ├── frame_000.png
+│           ├── frame_001.png
+│           ├── frame_002.png
+│           ├── frame_003.png
+│           ├── frame_004.png
+│           ├── frame_005.png
+│           ├── frame_006.png
+│           └── frame_007.png
+└── metadata.json
+
+19 directories, 129 files

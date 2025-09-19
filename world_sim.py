@@ -1,3 +1,5 @@
+from tree import load_trees
+from terrain import load_terrains_data
 from world import World, WorldGen, WorldGenConfig
 from minimap import MiniMap
 
@@ -21,7 +23,7 @@ from pygame_interface import PGIWorldPainter
 from pygame_interface import PGIWorldObjectSetPainter
 # --- Logging setup ---
 logger = logging.getLogger("main")
-PROJECT_PREFIXES = ("main","world", "terrain", "pgi", "manager")
+PROJECT_PREFIXES = ("main","world", "terrain", "pgi", "manager", "tree")
 ch = logging.StreamHandler()
 ch.setLevel(logging.DEBUG)
 formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -37,10 +39,10 @@ SCREEN_WIDTH, SCREEN_HEIGHT = 1600, 1000
 WORLD_WIDTH, WORLD_HEIGHT = 160, 100
 
 # --- Initialize world ---
-world_config = WorldGenConfig(  SIZE_X=100,
-                                SIZE_Y=100,
-                                SCALE =10,
-                                TILE_SUBDIVISIONS=10,
+world_config = WorldGenConfig(  SIZE_X= 50,
+                                SIZE_Y= 50,
+                                SCALE = 10,
+                                TILE_SUBDIVISIONS=4,
                                 WATER_RATIO=0.15,
                                 MOUNTAIN_RATIO=0.15,
                                 ICE_CAP_RATIO=0.01
@@ -114,6 +116,7 @@ try:
                     World.get_instance().generate()
                     minimap.needs_redraw = True
                     world_painter.reset()
+                    manager.reset()
                 if event.key == controls.PAUSE_GAME_KEY:
                     manager.toggle_pause()
                     print("game paused" if manager.paused else "game resumed")

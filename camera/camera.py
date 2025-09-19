@@ -6,7 +6,7 @@ class CameraConfig:
     def __init__(
         self,
         speed_tiles: float = 0.1,
-        zoom_step: int = 2,
+        zoom_step: int = 24,
         pan_edge_size: int = 10,
         min_tile_size: int = 64,
         max_tile_size: int = 256,

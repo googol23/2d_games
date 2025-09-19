@@ -1,12 +1,17 @@
+# pgi_world_object_set_painter.py
 import pygame
 from camera import Camera
 from manager import Manager
+from pygame.sprite import LayeredUpdates
 from .pgi_world_object_painter import PGIWorldObjectPainter
 
-class PGIWorldObjectSetPainter(pygame.sprite.Group):
+import logging
+logger = logging.getLogger("pgi")
+
+class PGIWorldObjectSetPainter(LayeredUpdates):
     """
-    World Object Painter using sprites with efficient culling.
-    Draws agents and static objects from the Manager.
+    Optimized Layered sprite group for world objects and agents.
+    Only updates visible objects and caches images per zoom.
     """
 
     def __init__(self, manager: Manager):
@@ -14,24 +19,16 @@ class PGIWorldObjectSetPainter(pygame.sprite.Group):
         self.manager = manager
         self.camera = Camera.get_instance()
         self.object_sprites: dict[int, PGIWorldObjectPainter] = {}  # obj.id -> sprite
-
-        self._visible_objects = []
-        self._last_camera_state = (None, None, None)  # x, y, tile_size
+        self._last_camera_state = (None, None, None)
 
     def _compute_visible_objects(self):
-        """Update the list of visible objects based on camera position."""
         cam = self.camera
         if (cam.x, cam.y, cam.tile_size) == self._last_camera_state:
             return  # no change
 
-        self._visible_objects.clear()
+        self._visible_objects = []
 
-        # Retrieve dynamic agents
-        for agent in self.manager.get_agents():
-            if cam.in_view(agent.x, agent.y):
-                self._visible_objects.append(agent)
-
-        # Retrieve static objects
+        # Static objects
         for obj in self.manager.static_objects:
             if cam.in_view(obj.x, obj.y):
                 self._visible_objects.append(obj)
@@ -39,30 +36,36 @@ class PGIWorldObjectSetPainter(pygame.sprite.Group):
         self._last_camera_state = (cam.x, cam.y, cam.tile_size)
 
     def update(self):
-        """Update visible PGIWorldObjectPainter sprites and their positions/images."""
         self._compute_visible_objects()
-        tile_size = self.camera.tile_size
+        cam = self.camera
+        tile_size = cam.tile_size
 
+        # Add or update sprites
         for obj in self._visible_objects:
             key = id(obj)
             if key not in self.object_sprites:
                 sprite = PGIWorldObjectPainter(obj, self.manager)
                 sprite.update_image(tile_size)
-                sprite.update_position(self.camera)
+                sprite.update_position(cam)
                 self.object_sprites[key] = sprite
                 super().add(sprite)
             else:
                 sprite = self.object_sprites[key]
                 sprite.update_image(tile_size)
-                sprite.update_position(self.camera)
+                sprite.update_position(cam)
+
+        # Remove sprites that are no longer visible
+        invisible_keys = set(self.object_sprites.keys()) - set(id(obj) for obj in self._visible_objects)
+        for key in invisible_keys:
+            super().remove(self.object_sprites[key])
+            del self.object_sprites[key]
 
     def draw(self, surface: pygame.Surface):
-        """Draw only visible object sprites."""
-        visible_sprites = [self.object_sprites[id(obj)] for obj in self._visible_objects]
-        pygame.sprite.Group(visible_sprites).draw(surface)
+        super().draw(surface)
 
     def reset(self):
-        """Call this when agents or static objects change."""
+        """Clear all cached sprites and reset camera state."""
+        for sprite in self.object_sprites.values():
+            super().remove(sprite)
         self.object_sprites.clear()
         self._last_camera_state = (None, None, None)
-        self._visible_objects.clear()

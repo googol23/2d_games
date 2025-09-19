@@ -87,7 +87,7 @@ class Manager:
         """
         self.world = World.get_instance()
         self.agents:dict[int, Agent] = {agent.id: agent for agent in agents}
-        self.static_objects = static_objects if static_objects is not None else []
+        self.static_objects = [obj for obj in self.world.elements.flat if obj is not None]
 
         self.day_counter: int = 0
         self.play_time: float = 0.0  # Accumulated session time while unpaused
@@ -97,6 +97,16 @@ class Manager:
         self._last_update_time: float | None = None  # <-- track last update internally
 
         self.selection: SelectionManager = SelectionManager() if selection_manager is None else selection_manager
+
+    def reset(self):
+        self.static_objects = [obj for obj in self.world.elements.flat if obj is not None]
+
+        self.day_counter: int = 0
+        self.play_time: float = 0.0  # Accumulated session time while unpaused
+        self.start_time: float = time.time()  # Last unpause start timestamp
+        self.paused = True  # Tracks pause/resume state
+
+        self._last_update_time: float | None = None  # <-- track last update internally
 
     def get_agents_id(self):
         return self.agents.keys()

@@ -8,6 +8,7 @@ from pathlib import Path
 import json
 
 from terrain import TERRAIN_DATA, load_terrains_data
+from tree import Tree, TREE_DATA, load_trees
 
 from .tile import Tile
 from .topology import generate_topological_map, visualize_topological_map
@@ -60,9 +61,12 @@ class WorldGen:
         self.topology: np.ndarray[np.float16] = np.zeros((self.topo_size_y, self.topo_size_x), dtype=np.float16)
         self.obstacle: np.ndarray[np.bool_] = np.zeros((self.topo_size_y, self.topo_size_x), dtype=np.bool_)
 
-
-        load_terrains_data()
-
+    def reset(self):
+        # --- clear previous generation ---
+        self.tiles[:, :] = None                  # clears all Tile references
+        self.elements[:, :] = None               # clears all Trees / objects
+        self.topology[:, :] = 0                  # reset heights
+        self.obstacle[:, :] = 0                  # reset obstacles
 
     @property
     def size_x(self)->int:
@@ -110,6 +114,17 @@ class WorldGen:
         Generates the height map and assigns terrains based on height.
 
         """
+        self.reset()
+        # 0. Loading neccesary data
+        if len(TREE_DATA) == 0:
+            load_trees()
+
+        if len(TERRAIN_DATA) == 0:
+            load_terrains_data()
+
+        logger.info(f"Terrain models:{len(TERRAIN_DATA)}")
+        logger.info(f"Tree models:{len(TREE_DATA)}")
+
         logger.info(" ... pre-allocating world tiles")
         # 1. populate world with Tiles
         for y in range(self.size_y):
@@ -135,7 +150,6 @@ class WorldGen:
         # 4. Compute Tile terrain tipe based on average Tile height
         for y in range(self.size_y):
             for x in range(self.size_x):
-                # FIXED: Correctly access the height map using [y, x]
                 h = self.tile_heights_map[y, x]
                 if h < water_level:
                     self.set_tile(x, y, Tile(terrain=TERRAIN_DATA["ocean"], is_water=True))
@@ -146,14 +160,21 @@ class WorldGen:
                 else:
                     self.set_tile(x, y, Tile(terrain=TERRAIN_DATA["grassland"]))
 
-        # 5. Add rivers or other dynamic features after initial generation
+        # 5. Calsify water bodies
         self.water_map = np.array(
-            [[1 if self.get_tile(x, y).is_water else 0 for y in range(self.size_y)]
-             for x in range(self.size_x)]
+            [[1 if self.get_tile(x, y).is_water else 0 for x in range(self.size_x)]
+            for y in range(self.size_y)],
+            dtype=np.int8
         )
+        self.classify_water_bodies()
+
+        # 6. Add rivers
         attempts = 0
         while attempts < 10 and self.carve_river_fast() == 0:
             attempts += 1
+
+        self.generate_forest_patches()
+        self.populate_trees()
 
         return self.tiles, self.elements, self.topology, self.obstacle
 
@@ -359,17 +380,137 @@ class WorldGen:
 
         return len(river_path)
 
+    def classify_water_bodies(self):
+        """
+        Reclassify water tiles into pond/lake/ocean.
+        Oceans are water bodies that touch the map edge.
+        Lakes and ponds must be surrounded by land.
+        """
+        logger.info("Classifying water bodies...")
+
+        # Label connected water regions
+        labeled, num_features = label(self.water_map)
+        if num_features == 0:
+            logger.info("No water bodies found.")
+            return
+
+
+        # Thresholds relative to map size
+        total_tiles = self.size_x * self.size_y
+        pond_thresh = 0.005 * total_tiles
+        lake_thresh = 0.010 * total_tiles
+
+        for label_id in range(1, num_features + 1):
+            coords = np.argwhere(labeled == label_id)
+            size = len(coords)
+
+            # Check if touches map edge → Ocean
+            touches_edge = any(
+                x == 0 or y == 0 or x == self.size_x - 1 or y == self.size_y - 1
+                for y, x in coords
+            )
+
+            if touches_edge:
+                new_terrain = TERRAIN_DATA["ocean"]
+            elif size < pond_thresh:
+                new_terrain = TERRAIN_DATA["pond"]
+            elif size < lake_thresh:
+                new_terrain = TERRAIN_DATA["lake"]
+            else:
+                # Large but enclosed → still lake
+                new_terrain = TERRAIN_DATA["lake"]
+
+            for y, x in coords:  # careful: (row, col) → (y, x)
+                self.get_tile(x, y).terrain = new_terrain
+
+    def generate_forest_patches(self, n_patches=5, percent_of_grassland=0.05, spread_chance=0.6):
+        """
+        Converts grassland tiles into forest patches.
+
+        Parameters:
+            n_patches (int): Number of forest patches to create.
+            percent_of_grassland (float): Fraction of total grassland tiles to convert per patch (0-1).
+            spread_chance (float): Probability of forest spreading to a neighboring grassland tile.
+        """
+        logger.info("Generating forest patches...")
+
+        # Find all grassland tiles
+        grassland_coords = [
+            (x, y) for y in range(self.size_y) for x in range(self.size_x)
+            if self.get_tile(x, y).terrain.name == "grassland"
+        ]
+        total_grassland = len(grassland_coords)
+        if total_grassland == 0:
+            return
+
+        for _ in range(n_patches):
+            if not grassland_coords:
+                break
+
+            # Pick a random seed for this patch
+            seed = random.choice(grassland_coords)
+
+            # Calculate max tiles for this patch as a percentage of remaining grassland
+            max_patch_size = max(1, int(total_grassland * percent_of_grassland))
+
+            patch_tiles = set([seed])
+            frontier = [seed]
+
+            while frontier and len(patch_tiles) < max_patch_size:
+                x, y = frontier.pop()
+                # Neighboring positions (4-way)
+                neighbors = [
+                    (nx, ny) for nx, ny in
+                    [(x+1,y), (x-1,y), (x,y+1), (x,y-1)]
+                    if 0 <= nx < self.size_x and 0 <= ny < self.size_y
+                ]
+                for nx, ny in neighbors:
+                    tile = self.get_tile(nx, ny)
+                    if tile.terrain.name == "grassland" and (nx, ny) not in patch_tiles:
+                        if random.random() < spread_chance:
+                            patch_tiles.add((nx, ny))
+                            frontier.append((nx, ny))
+
+            # Apply forest terrain
+            for x, y in patch_tiles:
+                self.get_tile(x, y).terrain = TERRAIN_DATA["forest"]
+                grassland_coords.remove((x, y))
+
+            # Update remaining grassland count
+            total_grassland = len(grassland_coords)
+
+
     def populate_trees(self):
-        for tile in self.tiles:
-            n_of_trees = 0
+        """
+        Places Tree objects on the map according to terrain type and density.
+        """
 
-            if tile.terrain.name == "forest":
-                n_of_trees = random.randint(5,10)
-            elif tile.terrain.name == "grassland":
-                n_of_trees = random.randint(1,3)
+        logger.info("Populating trees...")
 
-            # for i in range(n_of_trees):
-            #     tree = Tree(model=TREE_DATA["pine"])
+        for tile_y in range(self.size_y):
+            for tile_x in range(self.size_x):
+                tile = self.get_tile(tile_x, tile_y)
 
-            #     # Place at random available posiiton
-            #     self.elements[tree.id] = tree
+                # Determine density based on terrain
+                if tile.terrain.name == "forest":
+                    density = random.uniform(0.70, 0.95)
+                elif tile.terrain.name == "grassland":
+                    density = 0.05
+                else:
+                    continue  # Skip non-plantable terrains
+
+                # Determine number of trees in this tile
+                N = self.config.TILE_SUBDIVISIONS
+                num_cells = N * N
+                n_trees = int(num_cells * density)
+
+                # Randomly pick cells for trees
+                available_cells = [(i, j) for i in range(N) for j in range(N)]
+                random.shuffle(available_cells)
+                for i, j in available_cells[:n_trees]:
+                    world_x = tile_x + (j + 0.5) / N
+                    world_y = tile_y + (i + 0.5) / N
+                    if self.elements[tile_y*N + i, tile_x*N + j] is None:
+                        t = Tree(model=TREE_DATA["Pine"])
+                        t.set_coordinates(world_x, world_y)
+                        self.elements[tile_y*N + i, tile_x*N + j] = t

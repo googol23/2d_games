@@ -1,7 +1,6 @@
 
 import numpy as np
 from typing_extensions import Self
-
 from .world_generator import WorldGen
 from .tile import Tile
 
@@ -12,19 +11,6 @@ class World:
     """
     Represents the game world
     """
-    _self: Self | None = None
-
-    def __new__(cls, *args, **kwargs):
-        if cls._self is None:
-            cls._self = super().__new__(cls)
-        return cls._self
-
-    @classmethod
-    def get_instance(cls):
-        if cls._self is None:
-            raise RuntimeError("World not created yet")
-        return cls._self
-
     def __init__(self, gen: WorldGen):
         self.gen:WorldGen = gen
 
@@ -68,5 +54,5 @@ class World:
     def __str__(self):
         return f"World: size_x = {self.size_x}, size_y = {self.size_y}"
 
-    def generate(self):
+    def generate(self) -> Self:
         self.tiles, self.elements, self.topology, self.obstacle = self.gen.generate()

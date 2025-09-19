@@ -23,6 +23,7 @@ ZOOM_KEYS = {
 
 
 # Other actions
+OVERLAY_GRID_KEY = pygame.K_g
 TOGGLE_OVERLAY_KEY = pygame.K_F1
 REGENERATE_WORLD_KEY = pygame.K_KP_ENTER
 
