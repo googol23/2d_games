@@ -2,70 +2,103 @@
   {
     "name": "pond",
     "resources": ["fish", "clay"],
-    "vegetation": ["algae"],
+    "vegetation": {
+      "trees": [],
+      "plants": ["algae", "cattail", "reed"]
+    },
     "color": [100, 180, 255]
   },
   {
     "name": "lake",
     "resources": ["fish", "clay"],
-    "vegetation": ["algae"],
+    "vegetation": {
+      "trees": [],
+      "plants": ["algae", "cattail", "reed"]
+    },
     "color": [0, 160, 220],
     "texture": "./textures/terrains/lake/lake_00.png"
   },
   {
     "name": "river",
     "resources": ["fish", "stone"],
-    "vegetation": ["algae"],
+    "vegetation": {
+      "trees": ["willow"],
+      "plants": ["algae", "reed"]
+    },
     "color": [0, 120, 200]
   },
   {
     "name": "ocean",
     "resources": ["fish", "salt"],
-    "vegetation": ["seaweed"],
+    "vegetation": {
+      "trees": [],
+      "plants": ["seaweed"]
+    },
     "color": [0, 70, 150],
     "texture": "./textures/terrains/ocean/ocean_00.png"
   },
   {
     "name": "mountain",
     "resources": ["Silicon", "Aluminium", "Iron", "Titanium", "Magnesium", "Calcium", "Copper", "Zinc", "Nickel"],
-    "vegetation": ["pine", "fir", "moss"],
+    "vegetation": {
+      "trees": ["pine", "fir", "spruce", "cedar"],
+      "plants": ["lichen", "moss"]
+    },
     "color": [139, 137, 137]
   },
   {
     "name": "forest",
     "resources": ["Calcium", "Potassium", "Magnesium", "Sulfur", "Phosphorus", "Manganese"],
-    "vegetation": ["oak", "birch", "maple", "bush"],
+    "vegetation": {
+      "trees": ["oak", "birch", "maple", "cherry", "walnut", "ash", "beech", "mahogany", "teak"],
+      "plants": ["bush"]
+    },
     "color": [34, 139, 34]
   },
   {
     "name": "barren",
     "resources": ["Silicon", "Aluminium", "Iron", "Titanium", "Calcium", "Magnesium"],
-    "vegetation": [],
+    "vegetation": {
+      "trees": [],
+      "plants": []
+    },
     "color": [210, 180, 140]
   },
   {
     "name": "volcanic",
     "resources": ["Silicon", "Iron", "Magnesium", "Titanium", "Sulfur", "Chromium", "Nickel"],
-    "vegetation": ["lichen", "moss"],
+    "vegetation": {
+      "trees": [],
+      "plants": ["lichen", "moss"]
+    },
     "color": [178, 34, 34]
   },
   {
     "name": "swamp",
     "resources": ["Calcium", "Sulfur", "Phosphorus", "Manganese", "Potassium"],
-    "vegetation": ["cattail", "reed", "algae"],
+    "vegetation": {
+      "trees": ["willow"],
+      "plants": ["cattail", "reed", "algae"]
+    },
     "color": [47, 79, 47]
   },
   {
     "name": "grassland",
     "resources": ["Potassium", "Phosphorus", "Calcium", "Magnesium"],
-    "vegetation": ["grass", "wildflower", "shrub"],
+    "vegetation": {
+      "trees": ["oak", "birch", "maple"],
+      "plants": ["grass", "wildflower", "shrub"]
+    },
     "color": [124, 252, 0],
     "texture": "./textures/terrains/grassland/grassland.png"
   },
   {
     "name": "ice_cap",
     "resources": ["ice"],
-    "vegetation": [],
+    "vegetation": {
+      "trees": ["spruce", "fir"],
+      "plants": ["lichen"]
+    },
     "color": [255, 255, 255]
   }
 ]

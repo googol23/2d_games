@@ -7,6 +7,9 @@ logger = logging.getLogger(__name__)
 
 TERRAIN_DATA = {}  # name → Terrain object or dict
 
+class Vegetation(BaseModel):
+    trees: tuple[str,...] = ()
+    plants: tuple[str,...] = ()
 
 # Minimal validation model
 class Terrain(BaseModel):
@@ -14,11 +17,10 @@ class Terrain(BaseModel):
     color: tuple[int, int, int] = (0, 0, 0)
     texture: str | None = None
     resources: tuple[str, ...] = ()
-    vegetation: tuple[str, ...] = ()
+    vegetation: Vegetation = Vegetation()  # <- default is dict
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 
-    # allow color to come as a list
     @classmethod
     def parse_color(cls, color):
         if isinstance(color, list):
@@ -26,19 +28,24 @@ class Terrain(BaseModel):
         return color
 
     @classmethod
+    def parse_vegetation(cls, vegetation):
+        """
+        Converts dict values from list to tuple and wraps into Vegetation object.
+        """
+        if not isinstance(vegetation, dict):
+            vegetation = {}
+        trees = tuple(vegetation.get("trees", []))
+        plants = tuple(vegetation.get("plants", []))
+        return Vegetation(trees=trees, plants=plants)
+
+    @classmethod
     def from_dict(cls, data: dict):
         data = data.copy()
         if "color" in data:
             data["color"] = cls.parse_color(data["color"])
         data["resources"] = tuple(data.get("resources", []))
-        data["vegetation"] = tuple(data.get("vegetation", []))
+        data["vegetation"] = cls.parse_vegetation(data.get("vegetation", {}))
         return cls(**data)
-
-    def __str__(self):
-        return f"{self.name}: Color={self.color}, Resources={self.resources}, Vegetation={self.vegetation}"
-
-    def __repr__(self):
-        return self.__str__()
 
 
 def load_terrains_data(json_file_path: str | None = None):

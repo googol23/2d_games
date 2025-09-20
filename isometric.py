@@ -2,7 +2,7 @@ import controls
 import overlays
 from world import World, WorldGen, WorldGenConfig
 import pygame, random, os
-
+from pathlib import Path
 
 # --- Logging setup ---
 import logging
@@ -29,28 +29,6 @@ OFFSET_X = 1
 OFFSET_Y = 0
 RIVER_OFFSET_Y = TILE_HEIGHT // 2
 
-# World configuration
-# --- Initialize world ---
-world_config = WorldGenConfig(  SIZE_X= 50,
-                                SIZE_Y= 50,
-                                SCALE = 10,
-                                TILE_SUBDIVISIONS=2,
-                                WATER_RATIO=0.15,
-                                MOUNTAIN_RATIO=0.15,
-                                ICE_CAP_RATIO=0.01
-                              )
-world_gentor = WorldGen(config=world_config)
-my_world = World(world_gentor)
-my_world.generate()
-print(my_world)
-
-
-# Directory containing tile images
-grass_dir = "./textures/terrains/grassland"
-river_dir = "./textures/terrains/river"
-trees_dir = "./textures/trees/"
-character_dir = "./textures/agents/male_human/animations/"
-
 # Initialize pygame
 pygame.init()
 window_size = (1600, 1000)
@@ -58,7 +36,8 @@ screen = pygame.display.set_mode(window_size)
 pygame.display.set_caption("Isometric World with River Tile and Human")
 clock = pygame.time.Clock()
 
-# Load tiles textures
+
+# Load textures
 TILE_TEXTURES:dict[str,list[pygame.Surface]] = {
     "ocean" : [],
     "lake" : [],
@@ -76,26 +55,60 @@ for terrain in TILE_TEXTURES.keys():
         if filename.lower().endswith(".png"):
             path = os.path.join(terrain_dir, filename)
             img = pygame.image.load(path).convert_alpha()
-            img = pygame.transform.smoothscale(img, (TILE_WIDTH, TILE_HEIGHT * 2))
+            img = pygame.transform.scale(img, (TILE_WIDTH, TILE_HEIGHT * 2))
             img.set_colorkey((0, 0, 0))
             TILE_TEXTURES[terrain].append(img)
     if not TILE_TEXTURES[terrain]:
         raise RuntimeError(f"No PNG tiles found in {terrain_dir}")
 
-trees = {}
-for filename in os.listdir(trees_dir):
-    if filename.lower().endswith(".png"):
-        name, _ = os.path.splitext(filename)
-        try:
-            model, lifecycle = map(int, name.split("."))
-        except ValueError:
-            # skip files that don't match "N.M.png"
-            continue
-        path = os.path.join(trees_dir, filename)
-        img = pygame.image.load(path).convert_alpha()
-        img = pygame.transform.scale(img, (2*TILE_HEIGHT,2*TILE_HEIGHT))
-        trees[(model, lifecycle)] = img
+ELEMENT_TEXTURES: dict[str,dict[tuple[int,int]]] = {
+    "trees": {},
+    "stones": {}
+}
 
+def hash_to_tuple(s: str, n: int = 2) -> tuple[int, ...]:
+    h = hash(s)
+    h &= (1 << (32 * n)) - 1
+    result = tuple((h >> (32 * i)) & 0xFFFFFFFF for i in reversed(range(n)))
+    return result
+
+def key_from_texture(texture_path:str) -> tuple[int,int] | None:
+    name, _ = os.path.splitext(texture_path)
+    try:
+        model, lifecycle = map(int, name.split("."))
+        return model,lifecycle
+    except ValueError:
+        return hash_to_tuple(texture_path)
+
+for element in ELEMENT_TEXTURES.keys():
+    element_dir = f"./textures/elements/{element}"
+    for filename in os.listdir(element_dir):
+        if filename.lower().endswith(".png"):
+            key = key_from_texture(filename)
+            path = os.path.join(element_dir, filename)
+            img = pygame.image.load(path).convert_alpha()
+            img = pygame.transform.scale(img, (2*TILE_HEIGHT,2*TILE_HEIGHT))
+            ELEMENT_TEXTURES[element][key] = img
+
+
+# World configuration
+# --- Initialize world ---
+world_config = WorldGenConfig(  SIZE_X= GRID_WIDTH,
+                                SIZE_Y= GRID_HEIGHT,
+                                SCALE = 10,
+                                TILE_SUBDIVISIONS=1,
+                                WATER_RATIO=0.15,
+                                MOUNTAIN_RATIO=0.15,
+                                ICE_CAP_RATIO=0.01
+                              )
+world_gentor = WorldGen(config=world_config)
+my_world = World(world_gentor)
+my_world.generate()
+print(my_world)
+
+
+# Directory containing tile images
+character_dir = "./textures/agents/male_human/animations/"
 
 # --- Human class ---
 class Human:
@@ -181,7 +194,7 @@ character = Human(character_dir, start_pos=char_start_pos,frame_delay=FPS/8)
 
 
 # Function to convert grid coords to isometric pixel coords
-def grid_to_iso(x, y):
+def world_to_iso(x:float, y:float) -> tuple[int,int]:
     return int((x - y) * (TILE_WIDTH // 2)), int((x + y) * (TILE_HEIGHT // 2))
 
 
@@ -192,30 +205,35 @@ world_height = (GRID_WIDTH + GRID_HEIGHT) * (TILE_HEIGHT // 2) + TILE_HEIGHT * 2
 world_surface = pygame.Surface((world_width, world_height), pygame.SRCALPHA)
 
 tile_hight_map = my_world.gen.tile_heights_map
-for row in range(my_world.size_y):
-    for col in range(my_world.size_x):
-        current_tile = my_world.get_tile(col, row)
-        x, y = grid_to_iso(col, row)
-        pos_y = y + OFFSET_Y
+sorted_z = []
+for s in range(my_world.size_x + my_world.size_y - 1):  # sum of indices
+    for y in range(my_world.size_y):
+        x = s - y
+        if 0 <= x < my_world.size_x:
+            sorted_z.append((x,y))
 
-        # Select a tile image from the correct terrain
-        terrain_name = current_tile.terrain.name
-        tile_imgs = TILE_TEXTURES.get(terrain_name)
-        if not tile_imgs:
-            raise RuntimeError(f"No textures loaded for terrain '{terrain_name}'")
-        img = random.choice(tile_imgs)  # <-- use a random tile image for variety
+for col,row in sorted_z:
+    current_tile = my_world.get_tile(col, row)
+    x, y = world_to_iso(col, row)
+    pos_y = y + OFFSET_Y
 
-        # Apply water offset if needed
-        if current_tile.is_water:
-            offset_y = TILE_HEIGHT // 2
-        elif current_tile.terrain.name in ["mountain", "ice_cap"]:
-            offset_y = -round(TILE_HEIGHT * tile_hight_map[row,col])
-        else:
-            offset_y = 0
+    # Select a tile image from the correct terrain
+    terrain_name = current_tile.terrain.name
+    tile_imgs = TILE_TEXTURES.get(terrain_name)
+    if not tile_imgs:
+        raise RuntimeError(f"No textures loaded for terrain '{terrain_name}'")
+    img = random.choice(tile_imgs)  # <-- use a random tile image for variety
 
+    # Apply water offset if needed
+    if current_tile.is_water:
+        offset_y = TILE_HEIGHT // 2
+    elif current_tile.terrain.name in ["mountain", "ice_cap"]:
+        offset_y = 0#-round(TILE_HEIGHT * tile_hight_map[row,col])
+    else:
+        offset_y = 0
 
-        # Blit tile to world surface
-        world_surface.blit(img, (int(x + center_x), int(y + offset_y)))
+    # Blit tile to world surface
+    world_surface.blit(img, (int(x + center_x), int(y + offset_y)))
 
 # --- Create a cached grid surface ---
 # Pre-render the grid once
@@ -224,14 +242,14 @@ grid_surface = overlays.draw_grid(
     offset_x=center_x + TILE_WIDTH//2,
     offset_y=OFFSET_Y,
     color=(0, 0, 0, 100),
-    grid_to_iso=grid_to_iso
+    grid_to_iso=world_to_iso
 )
 world_with_grid_surface = world_surface.copy()
 world_with_grid_surface.blit(grid_surface, (0, 0))
 
 # Add trees
 world_elements = pygame.sprite.LayeredUpdates()
-def generate_trees_surface(world:World, trees_dict, tile_w, tile_h, center_x=0, offset_y=0):
+def generate_trees_surface(world:World, trees_dict:dict[tuple[int,int],pygame.Surface], tile_w, tile_h, center_x=0, offset_y=0):
     """
     Generate a surface with trees based on the World.elements array.
 
@@ -251,18 +269,14 @@ def generate_trees_surface(world:World, trees_dict, tile_w, tile_h, center_x=0, 
             if t is None:
                 continue
 
-            # Pick a tree image that matches cycle 2 (or whatever you want)
-            tree_keys = [k for k in trees_dict if k[1] == 2]
-            if not tree_keys:
-                continue
-            key = random.choice(tree_keys)
+            key = key_from_texture(Path(t.texture).name)
             tree_img = trees_dict[key]
 
             # Compute tile coordinates
-            tile_x = col // N
-            tile_y = row // N
+            tile_x = col / N
+            tile_y = row / N
 
-            iso_x, iso_y = grid_to_iso(tile_x, tile_y)
+            iso_x, iso_y = world_to_iso(tile_x, tile_y)
             tile_center_x = iso_x + center_x + tile_w // 2
             tile_center_y = iso_y + offset_y + tile_h // 2
 
@@ -275,14 +289,27 @@ def generate_trees_surface(world:World, trees_dict, tile_w, tile_h, center_x=0, 
 
 tree_surface = generate_trees_surface(
     my_world,
-    trees_dict=trees,
+    trees_dict=ELEMENT_TEXTURES["trees"],
     tile_w=TILE_WIDTH,
     tile_h=TILE_HEIGHT,
     center_x=center_x,
     offset_y=OFFSET_Y
 )
 
-
+def front_cone(world_x:float, world_y:float) -> list[tuple[int,int]]:
+    cone = [
+        (int(world_x) + 0, int(world_y) + 0),
+        (int(world_x) + 0, int(world_y) + 1),
+        (int(world_x) + 1, int(world_y) + 0),
+        (int(world_x) + 1, int(world_y) + 1),
+        (int(world_x) + 0, int(world_y) + 2),
+        (int(world_x) + 2, int(world_y) + 0),
+        (int(world_x) + 2, int(world_y) + 1),
+        (int(world_x) + 1, int(world_y) + 2),
+        (int(world_x) + 0, int(world_y) + 3),
+        (int(world_x) + 3, int(world_y) + 0),
+    ]
+    return cone
 
 # Camera position
 camera_x, camera_y = GRID_WIDTH//2, GRID_HEIGHT//2
@@ -311,6 +338,10 @@ while running_game:
     # Update character
     character.update(keys)
 
+
+    world_elements.update()
+    # world_elements.draw(tree_surface)
+
     screen.fill(BG_COLOR)
 
     if overlays.SHOW_GRID:
@@ -319,9 +350,9 @@ while running_game:
         screen.blit(world_surface, (int(camera_x), int(camera_y)))
 
 
+    character.draw(screen, camera_x, camera_y)
     screen.blit(tree_surface, (camera_x, camera_y))
 
-    character.draw(screen, camera_x, camera_y)
 
     # FPS counter
     fps_text = pygame.font.SysFont(None, 24).render(f"FPS: {int(clock.get_fps())}", True, (255, 255, 255))

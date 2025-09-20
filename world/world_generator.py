@@ -260,7 +260,7 @@ class WorldGen:
         for x, y in path:
             if not self.get_tile(x, y).is_water:
                 self.set_tile(x, y, Tile(is_water=True, terrain=TERRAIN_DATA["river"]))
-                self.water_map[x, y] = 1
+                self.water_map[y, x] = 1
 
         return len(path)
 
@@ -318,7 +318,8 @@ class WorldGen:
         attempts = 0
 
         directions = [(1, 0), (-1, 0), (0, 1), (0, -1),
-                    (1, 1), (1, -1), (-1, 1), (-1, -1)]  # 8-way movement
+                    # (1, 1), (1, -1), (-1, 1), (-1, -1)
+                    ]  # 8-way movement
 
         while current != target and attempts < max_attempts:
             x, y = current
@@ -376,7 +377,7 @@ class WorldGen:
             tile = self.get_tile(x, y)
             if not tile.is_water:
                 self.set_tile(x, y, Tile(is_water=True, terrain=TERRAIN_DATA["river"]))
-                self.water_map[x, y] = 1  # consistent indexing
+                self.water_map[y, x] = 1  # consistent indexing
 
         return len(river_path)
 
@@ -502,7 +503,7 @@ class WorldGen:
                 # Determine number of trees in this tile
                 N = self.config.TILE_SUBDIVISIONS
                 num_cells = N * N
-                n_trees = int(num_cells * density)
+                n_trees = round(num_cells * density)
 
                 # Randomly pick cells for trees
                 available_cells = [(i, j) for i in range(N) for j in range(N)]
@@ -511,6 +512,7 @@ class WorldGen:
                     world_x = tile_x + (j + 0.5) / N
                     world_y = tile_y + (i + 0.5) / N
                     if self.elements[tile_y*N + i, tile_x*N + j] is None:
-                        t = Tree(model=TREE_DATA["Pine"])
+                        tree_model = random.choice(tile.terrain.vegetation.trees)
+                        t = Tree(model=TREE_DATA[tree_model])
                         t.set_coordinates(world_x, world_y)
                         self.elements[tile_y*N + i, tile_x*N + j] = t

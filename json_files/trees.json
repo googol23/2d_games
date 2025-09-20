@@ -1,14 +1,15 @@
 {
-    "Oak": {
+    "oak": {
         "description": "Sturdy hardwood tree, ideal for furniture and construction.",
         "growth_rate": 50,
         "water_consumption": 5,
         "temp_range": [10, 30],
         "log_yield": 20,
         "seed_yield": 50,
-        "wood_type": "hardwood"
+        "wood_type": "hardwood",
+        "texture": "./textures/elements/tree/1.2.png"
     },
-    "Pine": {
+    "pine": {
         "description": "Tall softwood, commonly used for construction and paper.",
         "growth_rate": 30,
         "water_consumption": 4,
@@ -16,123 +17,137 @@
         "log_yield": 25,
         "seed_yield": 100,
         "wood_type": "softwood",
-        "texture": "./textures/elements/tree/pine_01.png"
+        "texture": "./textures/elements/tree/2.2.png"
     },
-    "Birch": {
+    "birch": {
         "description": "Deciduous tree with white bark, useful for furniture.",
         "growth_rate": 20,
         "water_consumption": 3,
         "temp_range": [5, 25],
         "log_yield": 15,
         "seed_yield": 100,
-        "wood_type": "hardwood"
+        "wood_type": "hardwood",
+        "texture": "./textures/elements/tree/3.2.png"
     },
-    "Maple": {
+    "maple": {
         "description": "Hardwood tree, famous for maple syrup and furniture.",
         "growth_rate": 40,
         "water_consumption": 4,
         "temp_range": [10, 30],
         "log_yield": 18,
         "seed_yield": 80,
-        "wood_type": "hardwood"
+        "wood_type": "hardwood",
+        "texture": "./textures/elements/tree/4.2.png"
     },
-    "Cherry": {
+    "cherry": {
         "description": "Fruit tree with valuable wood for fine furniture.",
         "growth_rate": 25,
         "water_consumption": 3,
         "temp_range": [10, 28],
         "log_yield": 12,
         "seed_yield": 50,
-        "wood_type": "hardwood"
+        "wood_type": "hardwood",
+        "texture": "./textures/elements/tree/5.2.png"
     },
-    "Walnut": {
+    "walnut": {
         "description": "Large hardwood tree with dense, dark wood.",
         "growth_rate": 60,
         "water_consumption": 5,
         "temp_range": [10, 30],
         "log_yield": 15,
         "seed_yield": 30,
-        "wood_type": "hardwood"
+        "wood_type": "hardwood",
+        "texture": "./textures/elements/tree/6.2.png"
     },
-    "Spruce": {
+    "spruce": {
         "description": "Softwood, commonly used in construction and paper.",
         "growth_rate": 35,
         "water_consumption": 4,
         "temp_range": [0, 25],
         "log_yield": 22,
         "seed_yield": 80,
-        "wood_type": "softwood"
+        "wood_type": "softwood",
+        "texture": "./textures/elements/tree/7.2.png"
     },
-    "Fir": {
+    "fir": {
         "description": "Softwood often used for timber and Christmas trees.",
         "growth_rate": 30,
         "water_consumption": 4,
         "temp_range": [0, 25],
         "log_yield": 20,
         "seed_yield": 70,
-        "wood_type": "softwood"
+        "wood_type": "softwood",
+        "texture": "./textures/elements/tree/8.2.png"
+        
     },
-    "Cedar": {
+    "cedar": {
         "description": "Aromatic softwood, resistant to decay.",
         "growth_rate": 50,
         "water_consumption": 3,
         "temp_range": [5, 30],
         "log_yield": 18,
         "seed_yield": 40,
-        "wood_type": "softwood"
+        "wood_type": "softwood",
+        "texture": "./textures/elements/tree/1.2.png"
     },
-    "Ash": {
+    "ash": {
         "description": "Hardwood tree, valued for tools and furniture.",
         "growth_rate": 40,
         "water_consumption": 4,
         "temp_range": [10, 28],
         "log_yield": 16,
         "seed_yield": 60,
-        "wood_type": "hardwood"
+        "wood_type": "hardwood",
+        "texture": "./textures/elements/tree/2.2.png"
     },
-    "Beech": {
+    "beech": {
         "description": "Hardwood with smooth bark, great for flooring.",
         "growth_rate": 50,
         "water_consumption": 4,
         "temp_range": [10, 28],
         "log_yield": 18,
         "seed_yield": 50,
-        "wood_type": "hardwood"
+        "wood_type": "hardwood",
+        "texture": "./textures/elements/tree/3.2.png"
     },
-    "Redwood": {
+    "redwood": {
         "description": "Giant softwood tree, extremely long-lived.",
         "growth_rate": 100,
         "water_consumption": 6,
         "temp_range": [10, 25],
         "log_yield": 50,
         "seed_yield": 200,
-        "wood_type": "softwood"
+        "wood_type": "softwood",
+        "texture": "./textures/elements/tree/4.2.png"
     },
-    "Sequoia": {
+    "sequoia": {
         "description": "Massive softwood tree, iconic for national parks.",
         "growth_rate": 120,
         "water_consumption": 6,
         "temp_range": [10, 25],
         "log_yield": 60,
         "seed_yield": 300,
-        "wood_type": "softwood"
+        "wood_type": "softwood",
+        "texture": "./textures/elements/tree/5.2.png"
     },
-    "Mahogany": {
+    "mahogany": {
         "description": "Dense tropical hardwood, prized for furniture.",
         "growth_rate": 80,
         "water_consumption": 5,
         "temp_range": [20, 32],
         "log_yield": 20,
         "seed_yield": 50,
-        "wood_type": "hardwood"
+        "wood_type": "hardwood",
+        "texture": "./textures/elements/tree/6.2.png"
     },
-    "Teak": {
+    "teak": {
         "description": "Durable tropical hardwood, ideal for outdoor use.",
         "growth_rate": 60,
         "water_consumption": 5,
         "temp_range": [22, 32],
         "log_yield": 18,
         "seed_yield": 40,
-        "wood_type": "hardwood"
+        "wood_type": "hardwood",
+        "texture": "./textures/elements/tree/7.2.png"
     }
 }
