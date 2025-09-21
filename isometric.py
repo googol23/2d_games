@@ -1,8 +1,10 @@
 import controls
 import overlays
 from world import World, WorldGen, WorldGenConfig
+from camera import CameraIso, CameraIsoConfig
 import pygame, random, os
 from pathlib import Path
+import numpy as np
 
 # --- Logging setup ---
 import logging
@@ -17,25 +19,40 @@ for name, log_obj in logging.root.manager.loggerDict.items():
         log_obj.addHandler(ch)
         log_obj.setLevel(logging.DEBUG)
 
+# World configuration
+# --- Initialize world ---
+world_config = WorldGenConfig(  SIZE_X= 40,
+                                SIZE_Y= 40,
+                                SCALE = 10,
+                                TILE_SUBDIVISIONS=1,
+                                WATER_RATIO=0.15,
+                                MOUNTAIN_RATIO=0.15,
+                                ICE_CAP_RATIO=0.01
+                              )
+world_gentor = WorldGen(config=world_config)
+my_world = World(world_gentor)
+
+# Camera configuration
+cam_config = CameraIsoConfig(
+        fps = 120,
+        speed_tiles = 20,
+        screen_with = 1600,
+        screen_height = 1000,
+        tile_width = 64,
+        tile_height = 32
+    )
+camera = CameraIso(my_world, 0, 0, config=cam_config)
+
 # Parameters
-FPS = 120
-TILE_WIDTH = 128
-TILE_HEIGHT = 64
 TILE_SCALE = 0.5 # Tiles per meter
-GRID_WIDTH  = 50
-GRID_HEIGHT = 50
 BG_COLOR = (30, 30, 30)
-OFFSET_X = 1
-OFFSET_Y = 0
-RIVER_OFFSET_Y = TILE_HEIGHT // 2
 
 # Initialize pygame
 pygame.init()
-window_size = (1600, 1000)
+window_size = (camera.config.SCREEN_WIDTH, camera.config.SCREEN_HEIGHT)
 screen = pygame.display.set_mode(window_size)
 pygame.display.set_caption("Isometric World with River Tile and Human")
 clock = pygame.time.Clock()
-
 
 # Load textures
 TILE_TEXTURES:dict[str,list[pygame.Surface]] = {
@@ -55,8 +72,8 @@ for terrain in TILE_TEXTURES.keys():
         if filename.lower().endswith(".png"):
             path = os.path.join(terrain_dir, filename)
             img = pygame.image.load(path).convert_alpha()
-            img = pygame.transform.scale(img, (TILE_WIDTH, TILE_HEIGHT * 2))
-            img.set_colorkey((0, 0, 0))
+            img = pygame.transform.scale(img, (camera.tile_width_pxl, camera.tile_height_pxl * 2))
+            # img.set_colorkey((0, 0, 0))
             TILE_TEXTURES[terrain].append(img)
     if not TILE_TEXTURES[terrain]:
         raise RuntimeError(f"No PNG tiles found in {terrain_dir}")
@@ -87,29 +104,24 @@ for element in ELEMENT_TEXTURES.keys():
             key = key_from_texture(filename)
             path = os.path.join(element_dir, filename)
             img = pygame.image.load(path).convert_alpha()
-            img = pygame.transform.scale(img, (2*TILE_HEIGHT,2*TILE_HEIGHT))
+            img = pygame.transform.scale(img, (2*camera.tile_height_pxl,2*camera.tile_height_pxl))
             ELEMENT_TEXTURES[element][key] = img
 
 
-# World configuration
-# --- Initialize world ---
-world_config = WorldGenConfig(  SIZE_X= GRID_WIDTH,
-                                SIZE_Y= GRID_HEIGHT,
-                                SCALE = 10,
-                                TILE_SUBDIVISIONS=1,
-                                WATER_RATIO=0.15,
-                                MOUNTAIN_RATIO=0.15,
-                                ICE_CAP_RATIO=0.01
-                              )
-world_gentor = WorldGen(config=world_config)
-my_world = World(world_gentor)
-my_world.generate()
-print(my_world)
 
 
 # Directory containing tile images
 character_dir = "./textures/agents/male_human/animations/"
-
+direction_v2str = {
+            (-1, -1): 'north',
+            (1, -1): 'east',
+            (1, 1): 'south',
+            (-1, 1): 'west',
+            (0, -1): 'north-east',
+            (1, 0): 'south-east',
+            (0, 1): 'south-west',
+            (-1, 0): 'north-west'
+        }
 # --- Human class ---
 class Human:
     def __init__(self, base_dir, walk_type='walking-8-frames', run_type='running-8-frames', start_pos:tuple[float,float] | None = None, frame_delay=5, size=(50,50)):
@@ -124,8 +136,8 @@ class Human:
         if start_pos is not None:
             self.x, self.y = start_pos  # world coordinates in fractional tile units
 
-        self.walk_speed = 0.4*TILE_SCALE / FPS  # tiles per frame
-        self.run_speed  = 1.6*TILE_SCALE / FPS  # tiles per frame
+        self.walk_speed = 0.4*TILE_SCALE  # tiles per second
+        self.run_speed  = 1.6*TILE_SCALE  # tiles per second
 
     def load_animations(self, base_dir, animation_type, size) -> dict[str, list[pygame.Surface]]:
         animations = {}
@@ -142,114 +154,135 @@ class Human:
                 animations[direction] = frames
         return animations
 
-    def update(self, keys):
+    def update(self, dt, keys = None, events=None, mouse_pos=None):
+        # Map WASD to isometric grid deltas (screen-relative)
+
         moving = False
         speed = self.walk_speed
 
         # Running vs walking
-        if (keys[pygame.K_LSHIFT] or keys[pygame.K_RSHIFT]) and (keys[pygame.K_w] or keys[pygame.K_a] or keys[pygame.K_s] or keys[pygame.K_d]):
-            self.current_animations = self.running_animations
-            speed = self.run_speed
-        else:
-            self.current_animations = self.walking_animations
-            speed = self.walk_speed
+        if keys:
+            if (keys[pygame.K_LSHIFT] or keys[pygame.K_RSHIFT]) and (keys[pygame.K_w] or keys[pygame.K_a] or keys[pygame.K_s] or keys[pygame.K_d]):
+                self.current_animations = self.running_animations
+                speed = self.run_speed
+            else:
+                self.current_animations = self.walking_animations
+                speed = self.walk_speed
 
-        # Movement in fractional tile units
-        if keys[pygame.K_w]:
-            self.y -= speed
-            self.direction = 'north'
-            moving = True
-        if keys[pygame.K_s]:
-            self.y += speed
-            self.direction = 'south'
-            moving = True
-        if keys[pygame.K_a]:
-            self.x -= speed
-            self.direction = 'west'
-            moving = True
-        if keys[pygame.K_d]:
-            self.x += speed
-            self.direction = 'east'
-            moving = True
+            dx = 0
+            dy = 0
+            # WASD to isometric 8-direction movement
+            if keys[pygame.K_w] and keys[pygame.K_a]:
+                dx -= 1
+                dy += 0
+            elif keys[pygame.K_w] and keys[pygame.K_d]:
+                dx += 0
+                dy -= 1
+            elif keys[pygame.K_s] and keys[pygame.K_a]:
+                dx -= 0
+                dy += 1
+            elif keys[pygame.K_s] and keys[pygame.K_d]:
+                dx += 1
+                dy += 0
+            elif keys[pygame.K_w]:
+                dx -= 1
+                dy -= 1
+            elif keys[pygame.K_s]:
+                dx += 1
+                dy += 1
+            elif keys[pygame.K_a]:
+                dx -= 1
+                dy += 1
+            elif keys[pygame.K_d]:
+                dx += 1
+                dy -= 1
 
-        # Update animation frame
-        if moving:
-            self.frame_counter += 1
-            if self.frame_counter >= self.frame_delay:
-                self.frame_index = (self.frame_index + 1) % len(self.current_animations[self.direction])
-                self.frame_counter = 0
-        else:
-            self.frame_index = 0
+            if dx != 0 or dy != 0:
+                norm = (dx ** 2 + dy ** 2) ** 0.5
+                self.x += (dx / norm) * speed*dt
+                self.y += (dy / norm) * speed*dt
+                moving = True
+                dir_tuple = (int(round(dx)), int(round(dy)))
+                if dir_tuple in direction_v2str:
+                    self.direction = direction_v2str[dir_tuple]
 
-    def draw(self, surface, camera_x, camera_y):
+            # Update animation frame
+            if moving:
+                self.frame_counter += 1
+                if self.frame_counter >= self.frame_delay:
+                    self.frame_index = (self.frame_index + 1) % len(self.current_animations[self.direction])
+                    self.frame_counter = 0
+            else:
+                self.frame_index = 0
+
+    def draw(self, surface, cam_x, cam_y):
         # Convert world coordinates to pixel coordinates
-        px = int(self.x * TILE_WIDTH)
-        py = int(self.y * TILE_HEIGHT)
+        px,py = camera.world_to_pixel(self.x, self.y)
+
         img = self.current_animations[self.direction][self.frame_index]
-        surface.blit(img, (px + camera_x - img.get_width()//2, py + camera_y - img.get_height()))
+        surface.blit(img, (px + cam_x - img.get_width()//2, py + cam_y - img.get_height()))
 
 # --- Initialize character ---
-char_start_pos = (GRID_WIDTH // 2, GRID_HEIGHT // 2)
-character = Human(character_dir, start_pos=char_start_pos,frame_delay=FPS/8)
+char_start_pos = (my_world.size_x // 2, my_world.size_y // 2)
+character = Human(character_dir, start_pos=char_start_pos,frame_delay=camera.FPS/8)
 
 
-# Function to convert grid coords to isometric pixel coords
-def world_to_iso(x:float, y:float) -> tuple[int,int]:
-    return int((x - y) * (TILE_WIDTH // 2)), int((x + y) * (TILE_HEIGHT // 2))
-
+# --- Generate world ---
+my_world.generate()
 
 # Create world surface
-center_x = int((GRID_WIDTH + GRID_HEIGHT) * (TILE_WIDTH // 4) - TILE_WIDTH // 2 + OFFSET_X)
-world_width = (GRID_WIDTH + GRID_HEIGHT) * (TILE_WIDTH // 2)
-world_height = (GRID_WIDTH + GRID_HEIGHT) * (TILE_HEIGHT // 2) + TILE_HEIGHT * 2
-world_surface = pygame.Surface((world_width, world_height), pygame.SRCALPHA)
+world_surface = pygame.Surface((camera.world_width_pxl, camera.world_height_pxl + camera.iso_offset_y + camera.tile_height_pxl), pygame.SRCALPHA)
 
-tile_hight_map = my_world.gen.tile_heights_map
+
 sorted_z = []
-for s in range(my_world.size_x + my_world.size_y - 1):  # sum of indices
-    for y in range(my_world.size_y):
+for s in range(my_world.elements.shape[0] + my_world.elements.shape[1] - 1):  # sum of indices
+    for y in range(my_world.elements.shape[1]):
         x = s - y
-        if 0 <= x < my_world.size_x:
+        if 0 <= x < my_world.elements.shape[0]:
             sorted_z.append((x,y))
 
-for col,row in sorted_z:
+# Compute isometric offset for world_surface
+for col, row in sorted_z[:my_world.size_x * my_world.size_y]:
     current_tile = my_world.get_tile(col, row)
-    x, y = world_to_iso(col, row)
-    pos_y = y + OFFSET_Y
+    # Isometric local coordinates for world_surface
+    x, y = camera.world_to_pixel(col, row)
 
     # Select a tile image from the correct terrain
     terrain_name = current_tile.terrain.name
     tile_imgs = TILE_TEXTURES.get(terrain_name)
     if not tile_imgs:
         raise RuntimeError(f"No textures loaded for terrain '{terrain_name}'")
-    img = random.choice(tile_imgs)  # <-- use a random tile image for variety
+    img = random.choice(tile_imgs)
 
     # Apply water offset if needed
     if current_tile.is_water:
-        offset_y = TILE_HEIGHT // 2
+        tile_offset_y = camera.tile_height_pxl // 2
     elif current_tile.terrain.name in ["mountain", "ice_cap"]:
-        offset_y = 0#-round(TILE_HEIGHT * tile_hight_map[row,col])
+        tile_offset_y = 0
     else:
-        offset_y = 0
+        tile_offset_y = 0
 
     # Blit tile to world surface
-    world_surface.blit(img, (int(x + center_x), int(y + offset_y)))
+    world_surface.blit(img, (int(x), int(y + tile_offset_y)))
+
+# Draw a red border around the world_surface
+border_rect = world_surface.get_rect()
+pygame.draw.rect(world_surface, (255, 0, 0), border_rect, 3)
 
 # --- Create a cached grid surface ---
 # Pre-render the grid once
 grid_surface = overlays.draw_grid(
-    GRID_WIDTH, GRID_HEIGHT, TILE_WIDTH, TILE_HEIGHT,
-    offset_x=center_x + TILE_WIDTH//2,
-    offset_y=OFFSET_Y,
+    my_world.size_x, my_world.size_y, camera.tile_width_pxl, camera.tile_height_pxl,
+    offset_x=camera.tile_width_pxl//2,
     color=(0, 0, 0, 100),
-    grid_to_iso=world_to_iso
+    grid_to_iso=camera.world_to_screen
 )
 world_with_grid_surface = world_surface.copy()
 world_with_grid_surface.blit(grid_surface, (0, 0))
 
 # Add trees
 world_elements = pygame.sprite.LayeredUpdates()
-def generate_trees_surface(world:World, trees_dict:dict[tuple[int,int],pygame.Surface], tile_w, tile_h, center_x=0, offset_y=0):
+def generate_trees_surface(world:World, trees_dict:dict[tuple[int,int],pygame.Surface], tile_w, tile_h):
     """
     Generate a surface with trees based on the World.elements array.
 
@@ -276,9 +309,9 @@ def generate_trees_surface(world:World, trees_dict:dict[tuple[int,int],pygame.Su
             tile_x = col / N
             tile_y = row / N
 
-            iso_x, iso_y = world_to_iso(tile_x, tile_y)
-            tile_center_x = iso_x + center_x + tile_w // 2
-            tile_center_y = iso_y + offset_y + tile_h // 2
+            iso_x, iso_y = camera.world_to_screen(tile_x, tile_y)
+            tile_center_x = iso_x + tile_w // 2
+            tile_center_y = iso_y + tile_h // 2
 
             pos_x = tile_center_x - tree_img.get_width() // 2
             pos_y = tile_center_y - tree_img.get_height()
@@ -290,10 +323,8 @@ def generate_trees_surface(world:World, trees_dict:dict[tuple[int,int],pygame.Su
 tree_surface = generate_trees_surface(
     my_world,
     trees_dict=ELEMENT_TEXTURES["trees"],
-    tile_w=TILE_WIDTH,
-    tile_h=TILE_HEIGHT,
-    center_x=center_x,
-    offset_y=OFFSET_Y
+    tile_w=camera.tile_width_pxl,
+    tile_h=camera.tile_height_pxl
 )
 
 def front_cone(world_x:float, world_y:float) -> list[tuple[int,int]]:
@@ -312,13 +343,60 @@ def front_cone(world_x:float, world_y:float) -> list[tuple[int,int]]:
     return cone
 
 # Camera position
-camera_x, camera_y = GRID_WIDTH//2, GRID_HEIGHT//2
 camera_speed = 8
 font = pygame.font.SysFont(None, 24)
+
+import numpy as np
+
+def get_visible_tiles_vectorized(world, camera, offset_x=0, offset_y=0):
+    """
+    Return a list of tiles that are at least partially visible in camera view, using CameraIso.
+    offset_x, offset_y: the offset used when blitting the world surface.
+    """
+    screen_w = camera.screen_width
+    screen_h = camera.screen_height
+
+    # Adjust screen corners by the offset
+    corners_screen = [
+        (0 - offset_x, 0 - offset_y),  # Top-left
+        (screen_w - offset_x, 0 - offset_y),  # Top-right
+        (0 - offset_x, screen_h - offset_y),  # Bottom-left
+        (screen_w - offset_x, screen_h - offset_y)  # Bottom-right
+    ]
+    corners_world = [camera.screen_to_world(sx, sy) for sx, sy in corners_screen]
+
+    xs = [wx for wx, wy in corners_world]
+    ys = [wy for wx, wy in corners_world]
+
+    margin = 3
+    min_x = max(0, int(np.floor(min(xs))) - margin)
+    max_x = min(world.size_x - 1, int(np.ceil(max(xs))) + margin)
+    min_y = max(0, int(np.floor(min(ys))) - margin)
+    max_y = min(world.size_y - 1, int(np.ceil(max(ys))) + margin)
+
+    visible_tiles = []
+    for x in range(min_x, max_x + 1):
+        for y in range(min_y, max_y + 1):
+            points = [
+                camera.world_to_screen(x, y),
+                camera.world_to_screen(x + 1, y),
+                camera.world_to_screen(x, y + 1),
+                camera.world_to_screen(x + 1, y + 1),
+                camera.world_to_screen(x + 0.5, y + 0.5),
+            ]
+            # Add the offset back to the screen coordinates
+            if any(
+                0 <= sx + offset_x < screen_w and 0 <= sy + offset_y < screen_h
+                for sx, sy in points
+            ):
+                visible_tiles.append((x, y))
+
+    return visible_tiles
 
 # Main loop
 running_game = True
 while running_game:
+    dt = clock.get_time() / 1000
     events = pygame.event.get()
     for event in events:
         if event.type == pygame.QUIT:
@@ -329,36 +407,43 @@ while running_game:
 
     keys = pygame.key.get_pressed()
 
+    n_of_visible_tiles = len(get_visible_tiles_vectorized(my_world, camera))
+    # print(f"Visible tiles: {len(n_of_visible_tiles)}")
+
     # Camera movement
-    if keys[pygame.K_LEFT]: camera_x += 8
-    if keys[pygame.K_RIGHT]: camera_x -= 8
-    if keys[pygame.K_UP]: camera_y += 8
-    if keys[pygame.K_DOWN]: camera_y -= 8
+    camera.control(dt,keys=keys)
 
     # Update character
-    character.update(keys)
-
-
-    world_elements.update()
-    # world_elements.draw(tree_surface)
-
+    character.update(dt,keys)
     screen.fill(BG_COLOR)
 
+    offset_x, offset_y = camera.world_to_screen(0, 0)
+
     if overlays.SHOW_GRID:
-        screen.blit(world_with_grid_surface, (int(camera_x), int(camera_y)))
+        screen.blit(world_with_grid_surface, (offset_x, offset_y))
     else:
-        screen.blit(world_surface, (int(camera_x), int(camera_y)))
+        screen.blit(world_surface, (offset_x, offset_y))
+
+    # ------------------------------------------------------
+    """
+    Draw a red ball at world coordinates (tiles) on the given surface.
+    """
+    # Draw red circle
+    pygame.draw.circle(world_surface, (255, 0, 0), (camera.world_to_pixel(0.5,0)), 10)
+    pygame.draw.circle(world_surface, (255, 0, 0), (camera.world_to_pixel(0.5,my_world.size_y)), 10)
+    pygame.draw.circle(world_surface, (255, 0, 0), (camera.world_to_pixel(0.5+my_world.size_x,0)), 10)
+    pygame.draw.circle(world_surface, (255, 0, 0), (camera.world_to_pixel(0.5+my_world.size_x,my_world.size_y)), 10)
+    # ------------------------------------------------------
+    character.draw(screen, offset_x, offset_y)
+
+    screen.blit(tree_surface, (offset_x, offset_y))
 
 
-    character.draw(screen, camera_x, camera_y)
-    screen.blit(tree_surface, (camera_x, camera_y))
-
-
-    # FPS counter
-    fps_text = pygame.font.SysFont(None, 24).render(f"FPS: {int(clock.get_fps())}", True, (255, 255, 255))
-    screen.blit(fps_text, (window_size[0] - 90, window_size[1] - 30))
+    # camera.FPS counter
+    fps_text = pygame.font.SysFont(None, 24).render(f"{n_of_visible_tiles}:FPS: {int(clock.get_fps())}", True, (255, 255, 255))
+    screen.blit(fps_text, (window_size[0] - 150, window_size[1] - 30))
 
     pygame.display.flip()
-    clock.tick(FPS)
+    clock.tick()
 
 pygame.quit()

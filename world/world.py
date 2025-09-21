@@ -1,5 +1,6 @@
 
 import numpy as np
+
 from typing_extensions import Self
 from .world_generator import WorldGen
 from .tile import Tile

@@ -19,37 +19,22 @@ class CameraConfig:
 
 
 class Camera:
-    _self: Self | None = None
-
-    def __new__(cls, *args, **kwargs):
-        if cls._self is None:
-            cls._self = super().__new__(cls)
-        return cls._self
-
-    @classmethod
-    def get_instance(cls):
-        if cls._self is None:
-            raise RuntimeError("Camera not created yet")
-        return cls._self
-
     def __init__(
         self,
-        x: float = 0,
-        y: float = 0,
-        width_pxl: int = 800,
-        height_pxl: int = 600,
-        tile_size: int = 5,
+        world: World | None = None,
+        start_x: float = 0,    # in world tile coords
+        start_y: float = 0,    # in world tile coords
+        screen_width_pxl: int = 800,  # screen width in pixels
+        screen_height_pxl: int = 600, # screen height in pixels
+        tile_size_w: int = 5, # TODO I DON'T LIKE THIS, becuase it doe noto fit for ISO view
         config: CameraConfig | None = None,
     ):
-        if getattr(self, "_initialized", False):
-            return
-        self._initialized = True
 
-        self.world = World.get_instance()
-        self.x = x
-        self.y = y
-        self.width_pxl = width_pxl
-        self.height_pxl = height_pxl
+        self.world = world
+        self.x = start_x
+        self.y = start_y
+        self.screen_width_pxl = screen_width_pxl
+        self.screen_height_pxl = screen_height_pxl
         self.config = config or CameraConfig()
 
         # Clamp initial tile size
@@ -61,12 +46,12 @@ class Camera:
     @property
     def width_tls(self) -> float:
         """Number of tiles visible horizontally"""
-        return self.width_pxl / self.tile_size
+        return self.screen_width_pxl / self.tile_size
 
     @property
     def height_tls(self) -> float:
         """Number of tiles visible vertically"""
-        return self.height_pxl / self.tile_size
+        return self.screen_height_pxl / self.tile_size
 
     @property
     def world_width(self) -> float:
@@ -106,8 +91,8 @@ class Camera:
 
     def edge_pan(self, mx: int, my: int):
         """Pan camera if mouse is near screen edges."""
-        dx = -1 if mx < self.config.PAN_EDGE_SIZE else 1 if mx > self.width_pxl - self.config.PAN_EDGE_SIZE else 0
-        dy = -1 if my < self.config.PAN_EDGE_SIZE else 1 if my > self.height_pxl - self.config.PAN_EDGE_SIZE else 0
+        dx = -1 if mx < self.config.PAN_EDGE_SIZE else 1 if mx > self.screen_width_pxl - self.config.PAN_EDGE_SIZE else 0
+        dy = -1 if my < self.config.PAN_EDGE_SIZE else 1 if my > self.screen_height_pxl - self.config.PAN_EDGE_SIZE else 0
         if dx != 0 or dy != 0:
             self.pan(dx, dy)
 
