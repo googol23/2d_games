@@ -488,31 +488,30 @@ class WorldGen:
 
         logger.info("Populating trees...")
 
-        for tile_y in range(self.size_y):
-            for tile_x in range(self.size_x):
-                tile = self.get_tile(tile_x, tile_y)
+        for (y, x), _ in np.ndenumerate(self.elements):
+            world_x = x / self.config.TILE_SUBDIVISIONS
+            world_y = y / self.config.TILE_SUBDIVISIONS
 
-                # Determine density based on terrain
-                if tile.terrain.name == "forest":
-                    density = random.uniform(0.70, 0.95)
-                elif tile.terrain.name == "grassland":
-                    density = 0.05
-                else:
-                    continue  # Skip non-plantable terrains
+            assert 0 <= world_x < self.size_x
+            assert 0 <= world_y < self.size_y
 
-                # Determine number of trees in this tile
-                N = self.config.TILE_SUBDIVISIONS
-                num_cells = N * N
-                n_trees = round(num_cells * density)
+            tile = self.get_tile(int(world_x), int(world_y))
 
-                # Randomly pick cells for trees
-                available_cells = [(i, j) for i in range(N) for j in range(N)]
-                random.shuffle(available_cells)
-                for i, j in available_cells[:n_trees]:
-                    world_x = tile_x + (j + 0.5) / N
-                    world_y = tile_y + (i + 0.5) / N
-                    if self.elements[tile_y*N + i, tile_x*N + j] is None:
-                        tree_model = random.choice(tile.terrain.vegetation.trees)
-                        t = Tree(model=TREE_DATA[tree_model])
-                        t.set_coordinates(world_x, world_y)
-                        self.elements[tile_y*N + i, tile_x*N + j] = t
+            # Determine density based on terrain
+            if tile.terrain.name == "forest":
+                density = 0.99
+            elif tile.terrain.name == "grassland":
+                density = 0.00
+            else:
+                continue  # Skip non-plantable terrains
+
+            if random.random() > density:
+                continue  # Skip based on density
+
+
+            # Randomly pick cells for trees
+            if self.elements[y,x] is None:
+                tree_model = random.choice(tile.terrain.vegetation.trees)
+                t = Tree(model=TREE_DATA[tree_model])
+                t.set_coordinates(world_x, world_y)
+                self.elements[y,x] = t

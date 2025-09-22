@@ -46,20 +46,12 @@ class CameraIso:
 
 
     @cached_property
-    def offset_x(self) -> int:
-        return self.screen_width // 2 - self.world_width_pxl
-
-    @cached_property
-    def offset_y(self) -> int:
-        return 0
-
-    @cached_property
     def iso_offset_x(self) -> int:
-        return (self.world.size_y - 1) * (self.tile_width_pxl // 2) if self.world else 0
+        return self.screen_width // 2
 
     @cached_property
     def iso_offset_y(self) -> int:
-        return 5*self.tile_height_pxl  # vertical padding
+        return 0
 
     @cached_property
     def tile_width_pxl(self) -> int:
@@ -142,22 +134,10 @@ class CameraIso:
 
 
     # --- Coordinate transformations ---
-    def world_to_pixel(self, world_x: float, world_y: float) -> tuple[int, int]:
-        """
-        Convert world (tile) coordinates to pixel coordinates on a surface
-        with only isometric math and isometric offset (for world_surface).
-        """
-        iso_x = (world_x - world_y) * 0.5 * self.tile_width_pxl
-        iso_y = (world_x + world_y) * 0.5 * self.tile_height_pxl
-        return int(iso_x + self.iso_offset_x), int(iso_y + self.iso_offset_y)
-
     def world_to_screen(self, world_x: float, world_y: float) -> tuple[int, int]:
-        iso_x, iso_y = self.world_to_pixel(world_x, world_y)
-        # Camera offset for panning/zooming
-        iso_x -= (self.x - self.y) * 0.5 * self.tile_width_pxl
-        iso_y -= (self.x + self.y) * 0.5 * self.tile_height_pxl
-        iso_x += self.offset_x
-        iso_y += self.offset_y
+        iso_x = ((world_x - self.x) - (world_y - self.y)) * 0.5 * self.tile_width_pxl  + self.iso_offset_x
+        iso_y = ((world_x - self.x) + (world_y - self.y)) * 0.5 * self.tile_height_pxl + self.iso_offset_y
+
         return int(iso_x), int(iso_y)
 
 
@@ -169,62 +149,73 @@ class CameraIso:
         half_w = 0.5 * self.tile_width_pxl
         half_h = 0.5 * self.tile_height_pxl
 
-        # undo what world_to_screen applies:
-        # world_to_screen: iso = world_to_pixel(...) - cam_pan + offset
-        # so to invert: subtract offset, subtract iso_offset, add cam_pan contribution
-        sx = screen_x - self.offset_x - self.iso_offset_x + (self.x - self.y) * half_w
-        sy = screen_y - self.offset_y - self.iso_offset_y + (self.x + self.y) * half_h
+        # Adjust for screen center offset
+        s_rel_x = screen_x - self.iso_offset_x
+        s_rel_y = screen_y - self.iso_offset_y
 
-        # now invert isometric transform:
-        world_x = (sx / half_w + sy / half_h) * 0.5
-        world_y = (sy / half_h - sx / half_w) * 0.5
+        # Invert the isometric projection equations
+        # s_rel_x = (w_rel_x - w_rel_y) * half_w
+        # s_rel_y = (w_rel_x + w_rel_y) * half_h
+        w_rel_x = (s_rel_x / half_w + s_rel_y / half_h) * 0.5
+        w_rel_y = (s_rel_y / half_h - s_rel_x / half_w) * 0.5
+
+        # Add camera's world position to get absolute world coordinates
+        world_x = self.x + w_rel_x
+        world_y = self.y + w_rel_y
 
         return world_x, world_y
 
-
-    import math
-
-    def visible_tiles(self, margin:int = 1) -> list[tuple[int,int]]:
+    def get_visible_tile_bounds(self, margin: int = 2) -> tuple[int, int, int, int]:
         """
-        Return list of (x,y) tile coordinates that are at least partially visible
-        on the screen. Efficient: computes world-space bounding box from screen
-        corners then culls tiles whose iso bounding box doesn't intersect the screen.
-        margin: extra tiles to include around the bbox (helps for rounding).
+        Calculates the bounding box of visible tiles in world coordinates.
+        Returns (min_x, max_x, min_y, max_y).
         """
-        if not self.world:
-            return []
+        corners = [
+            self.screen_to_world(0, 0),
+            self.screen_to_world(self.screen_width, 0),
+            self.screen_to_world(0, self.screen_height),
+            self.screen_to_world(self.screen_width, self.screen_height),
+        ]
+        min_x = int(min(c[0] for c in corners)) - margin
+        max_x = int(max(c[0] for c in corners)) + margin
+        min_y = int(min(c[1] for c in corners)) - margin
+        max_y = int(max(c[1] for c in corners)) + margin
+        return min_x, max_x, min_y, max_y
 
-        w, h = self.screen_width, self.screen_height
+    def get_visible_tiles(self, margin: int = 2) -> list[tuple[int, int]]:
+        """
+        Calculates the precise list of visible tiles by iterating in a transformed
+        "diamond" coordinate space that maps directly to the screen.
 
-        # screen corners in absolute screen coords
-        screen_corners = [(0,0), (w,0), (0,h), (w,h)]
+        Returns a list of (x, y) world coordinates for visible tiles.
+        """
+        half_w = 0.5 * self.tile_width_pxl
+        half_h = 0.5 * self.tile_height_pxl
 
-        # convert to world-space (floats)
-        corners_world = [self.screen_to_world(sx, sy) for sx, sy in screen_corners]
-        xs = [c[0] for c in corners_world]
-        ys = [c[1] for c in corners_world]
+        # The screen is a rectangle in screen-space. In world-space, this corresponds
+        # to a diamond shape. By transforming our iteration space, we can treat the
+        # visible diamond as a simple rectangle.
+        # Let u = x + y and v = x - y.
+        # These correspond directly to screen y and screen x, respectively.
 
-        # conservative integer bbox in tile space
-        min_x = max(0, int(math.floor(min(xs))) - margin)
-        max_x = min(self.world.size_x - 1, int(math.ceil(max(xs))) + margin)
-        min_y = max(0, int(math.floor(min(ys))) - margin)
-        max_y = min(self.world.size_y - 1, int(math.ceil(max(ys))) + margin)
+        # Find the min/max of u = x + y
+        u_min = (self.x + self.y) + (0 - self.iso_offset_y) / half_h
+        u_max = (self.x + self.y) + (self.screen_height - self.iso_offset_y) / half_h
 
-        visible = []
-        # small loop: only tiles inside the candidate bbox
-        for x in range(min_x, max_x + 1):
-            for y in range(min_y, max_y + 1):
-                # compute tile's 2D screen bbox using corners (fast)
-                tl = self.world_to_screen(x, y)
-                br = self.world_to_screen(x + 1, y + 1)
-                left = min(tl[0], br[0])
-                right = max(tl[0], br[0])
-                top = min(tl[1], br[1])
-                bottom = max(tl[1], br[1])
+        # Find the min/max of v = x - y
+        v_min = (self.x - self.y) + (0 - self.iso_offset_x) / half_w
+        v_max = (self.x - self.y) + (self.screen_width - self.iso_offset_x) / half_w
 
-                # quick rectangle intersection test (partial visibility)
-                if right < 0 or left > w or bottom < 0 or top > h:
-                    continue
-                visible.append((x, y))
+        visible_tiles = []
+        # Iterate over the diamond space, including a margin
+        for u in range(int(u_min) - margin, int(u_max) + margin):
+            for v in range(int(v_min) - margin, int(v_max) + margin):
+                # We only need to check tiles where u and v have the same parity
+                # because x = (u+v)/2 and y = (u-v)/2 must be integers.
+                if (u + v) % 2 == 0:
+                    # Convert back to world coordinates
+                    x = (u + v) // 2
+                    y = (u - v) // 2
+                    visible_tiles.append((x, y))
 
-        return visible
+        return visible_tiles
