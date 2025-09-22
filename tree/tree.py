@@ -25,6 +25,7 @@ class TreeModel(BaseModel):
 class Tree(WorldObject):
 
     def __init__(self, model: TreeModel):
+        super().__init__(0,0)
         self.name = model.name
         self.growth_rate = model.growth_rate
         self.water_consumption = model.water_consumption

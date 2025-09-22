@@ -161,8 +161,70 @@ class CameraIso:
         return int(iso_x), int(iso_y)
 
 
-    def screen_to_world(self, screen_x: int, screen_y: int) -> tuple[float, float]:
-        """Convert screen pixels to world coordinates (tiles) relative to camera."""
-        world_x = ((screen_x / (0.5 * self.tile_width_pxl)) + (screen_y / (0.5 * self.tile_height_pxl))) / 2 + self.x
-        world_y = ((screen_y / (0.5 * self.tile_height_pxl)) - (screen_x / (0.5 * self.tile_width_pxl))) / 2 + self.y
+    def screen_to_world(self, screen_x: float, screen_y: float) -> tuple[float, float]:
+        """
+        Convert absolute screen pixel coordinates -> world (tile) coordinates
+        accounting for iso_offset, screen offset, and camera pan.
+        """
+        half_w = 0.5 * self.tile_width_pxl
+        half_h = 0.5 * self.tile_height_pxl
+
+        # undo what world_to_screen applies:
+        # world_to_screen: iso = world_to_pixel(...) - cam_pan + offset
+        # so to invert: subtract offset, subtract iso_offset, add cam_pan contribution
+        sx = screen_x - self.offset_x - self.iso_offset_x + (self.x - self.y) * half_w
+        sy = screen_y - self.offset_y - self.iso_offset_y + (self.x + self.y) * half_h
+
+        # now invert isometric transform:
+        world_x = (sx / half_w + sy / half_h) * 0.5
+        world_y = (sy / half_h - sx / half_w) * 0.5
+
         return world_x, world_y
+
+
+    import math
+
+    def visible_tiles(self, margin:int = 1) -> list[tuple[int,int]]:
+        """
+        Return list of (x,y) tile coordinates that are at least partially visible
+        on the screen. Efficient: computes world-space bounding box from screen
+        corners then culls tiles whose iso bounding box doesn't intersect the screen.
+        margin: extra tiles to include around the bbox (helps for rounding).
+        """
+        if not self.world:
+            return []
+
+        w, h = self.screen_width, self.screen_height
+
+        # screen corners in absolute screen coords
+        screen_corners = [(0,0), (w,0), (0,h), (w,h)]
+
+        # convert to world-space (floats)
+        corners_world = [self.screen_to_world(sx, sy) for sx, sy in screen_corners]
+        xs = [c[0] for c in corners_world]
+        ys = [c[1] for c in corners_world]
+
+        # conservative integer bbox in tile space
+        min_x = max(0, int(math.floor(min(xs))) - margin)
+        max_x = min(self.world.size_x - 1, int(math.ceil(max(xs))) + margin)
+        min_y = max(0, int(math.floor(min(ys))) - margin)
+        max_y = min(self.world.size_y - 1, int(math.ceil(max(ys))) + margin)
+
+        visible = []
+        # small loop: only tiles inside the candidate bbox
+        for x in range(min_x, max_x + 1):
+            for y in range(min_y, max_y + 1):
+                # compute tile's 2D screen bbox using corners (fast)
+                tl = self.world_to_screen(x, y)
+                br = self.world_to_screen(x + 1, y + 1)
+                left = min(tl[0], br[0])
+                right = max(tl[0], br[0])
+                top = min(tl[1], br[1])
+                bottom = max(tl[1], br[1])
+
+                # quick rectangle intersection test (partial visibility)
+                if right < 0 or left > w or bottom < 0 or top > h:
+                    continue
+                visible.append((x, y))
+
+        return visible
