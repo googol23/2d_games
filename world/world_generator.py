@@ -18,8 +18,8 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class WorldGenConfig:
-    SIZE_X: int = 50   # tiles
-    SIZE_Y: int = 50   # tiles
+    WIDTH: int = 50   # tiles
+    HEIGHT: int = 50   # tiles
     SCALE: float = 10  # meters
     TILE_SUBDIVISIONS: int = 10  # subdivisions per tile
     WATER_RATIO:float = 0.1
@@ -29,8 +29,8 @@ class WorldGenConfig:
     def __str__(self) -> str:
         return (
             f"WorldGenConfig("
-            f"SIZE_X={self.SIZE_X}, "
-            f"SIZE_Y={self.SIZE_Y}, "
+            f"WIDTH={self.WIDTH}, "
+            f"HEIGHT={self.HEIGHT}, "
             f"SCALE={self.SCALE}, "
             f"TILE_SUBDIVISIONS={self.TILE_SUBDIVISIONS})"
         )
@@ -56,10 +56,10 @@ class WorldGen:
 
 
         logger.info("Generating world ...")
-        self.tiles: np.ndarray[Tile] = np.empty((self.size_y, self.size_x), dtype=object)
-        self.elements: np.ndarray = np.empty((self.topo_size_y, self.topo_size_x), dtype=object)
-        self.topology: np.ndarray[np.float16] = np.zeros((self.topo_size_y, self.topo_size_x), dtype=np.float16)
-        self.obstacle: np.ndarray[np.bool_] = np.zeros((self.topo_size_y, self.topo_size_x), dtype=np.bool_)
+        self.tiles: np.ndarray[Tile] = np.empty((self.height, self.width), dtype=object)
+        self.elements: np.ndarray = np.empty((self.topo_height, self.topo_width), dtype=object)
+        self.topology: np.ndarray[np.float16] = np.zeros((self.topo_height, self.topo_width), dtype=np.float16)
+        self.obstacle: np.ndarray[np.bool_] = np.zeros((self.topo_height, self.topo_width), dtype=np.bool_)
 
     def reset(self):
         # --- clear previous generation ---
@@ -69,20 +69,20 @@ class WorldGen:
         self.obstacle[:, :] = 0                  # reset obstacles
 
     @property
-    def size_x(self)->int:
-        return self.config.SIZE_X
+    def width(self)->int:
+        return self.config.WIDTH
 
     @property
-    def size_y(self)->int:
-        return self.config.SIZE_Y
+    def height(self)->int:
+        return self.config.HEIGHT
 
     @property
-    def topo_size_x(self)->int:
-        return self.config.SIZE_X * self.config.TILE_SUBDIVISIONS
+    def topo_width(self)->int:
+        return self.config.WIDTH * self.config.TILE_SUBDIVISIONS
 
     @property
-    def topo_size_y(self)->int:
-        return self.config.SIZE_Y * self.config.TILE_SUBDIVISIONS
+    def topo_height(self)->int:
+        return self.config.HEIGHT * self.config.TILE_SUBDIVISIONS
 
     @property
     def scale(self)->float:
@@ -94,7 +94,7 @@ class WorldGen:
         Returns the average height per tile, cached until topology or config changes.
         """
         N = self.config.TILE_SUBDIVISIONS
-        reshaped = self.topology.reshape(self.size_y, N, self.size_x, N)
+        reshaped = self.topology.reshape(self.height, N, self.width, N)
         return reshaped.mean(axis=(1, 3))
 
     def get_tile(self, x: int, y: int) -> Tile:
@@ -127,13 +127,13 @@ class WorldGen:
 
         logger.info(" ... pre-allocating world tiles")
         # 1. populate world with Tiles
-        for y in range(self.size_y):
-            for x in range(self.size_x):
+        for y in range(self.height):
+            for x in range(self.width):
                 self.tiles[y, x] = Tile()
 
         # 2. build topological map
         self.topology = generate_topological_map(
-            self.topo_size_x, self.topo_size_y, n_of_peaks=random.randint(5, 10)
+            self.topo_width, self.topo_height, n_of_peaks=random.randint(5, 10)
         )
         visualize_topological_map(self.topology)
         # invalidate cached tile_height_map
@@ -148,8 +148,8 @@ class WorldGen:
 
         logger.info("Filling world with terrains based on height map")
         # 4. Compute Tile terrain tipe based on average Tile height
-        for y in range(self.size_y):
-            for x in range(self.size_x):
+        for y in range(self.height):
+            for x in range(self.width):
                 h = self.tile_heights_map[y, x]
                 if h < water_level:
                     self.set_tile(x, y, Tile(terrain=TERRAIN_DATA["ocean"], is_water=True))
@@ -162,8 +162,8 @@ class WorldGen:
 
         # 5. Calsify water bodies
         self.water_map = np.array(
-            [[1 if self.get_tile(x, y).is_water else 0 for x in range(self.size_x)]
-            for y in range(self.size_y)],
+            [[1 if self.get_tile(x, y).is_water else 0 for x in range(self.width)]
+            for y in range(self.height)],
             dtype=np.int8
         )
         self.classify_water_bodies()
@@ -188,8 +188,8 @@ class WorldGen:
         # --- 1. Pick headwater from mountain tiles ---
         mountain_coords = [
             (x, y)
-            for x in range(self.size_x)
-            for y in range(self.size_y)
+            for x in range(self.width)
+            for y in range(self.height)
             if self.get_tile(x, y).terrain
             and self.get_tile(x, y).terrain.name in ["mountain", "ice_cap"]
         ]
@@ -204,10 +204,10 @@ class WorldGen:
         if num_features == 0:
             logger.info("No water clusters, sending river to edge.")
             edges = [
-                lambda: (0, random.randint(0, self.size_y - 1)),
-                lambda: (self.size_x - 1, random.randint(0, self.size_y - 1)),
-                lambda: (random.randint(0, self.size_x - 1), 0),
-                lambda: (random.randint(0, self.size_x - 1), self.size_y - 1),
+                lambda: (0, random.randint(0, self.height - 1)),
+                lambda: (self.width - 1, random.randint(0, self.height - 1)),
+                lambda: (random.randint(0, self.width - 1), 0),
+                lambda: (random.randint(0, self.width - 1), self.height - 1),
             ]
             river_mouth = random.choice(edges)()
         else:
@@ -243,7 +243,7 @@ class WorldGen:
 
             for dx, dy in directions:
                 nx, ny = x + dx, y + dy
-                if 0 <= nx < self.size_x and 0 <= ny < self.size_y:
+                if 0 <= nx < self.width and 0 <= ny < self.height:
                     if (nx, ny) not in visited:
                         # FIXED: Correctly access the height map using [ny, nx]
                         if self.topology[ny, nx] <= self.topology[y, x]:
@@ -278,13 +278,13 @@ class WorldGen:
             int: Number of river tiles carved.
         """
         logger.debug("Generating river (fast)")
-        max_attempts = max(self.size_x, self.size_y) / lateral_chance
+        max_attempts = max(self.width, self.height) / lateral_chance
 
         # --- 1. Pick headwater from mountain tiles ---
         mountain_coords = [
             (x, y)
-            for x in range(self.size_x)
-            for y in range(self.size_y)
+            for x in range(self.width)
+            for y in range(self.height)
             if self.get_tile(x, y).terrain
             and self.get_tile(x, y).terrain.name in ["mountain", "ice_cap"]
         ]
@@ -299,10 +299,10 @@ class WorldGen:
         if num_features == 0:
             # Fallback: random map edge
             edges = [
-                lambda: (0, np.random.randint(self.size_y)),
-                lambda: (self.size_x - 1, np.random.randint(self.size_y)),
-                lambda: (np.random.randint(self.size_x), 0),
-                lambda: (np.random.randint(self.size_x), self.size_y - 1),
+                lambda: (0, np.random.randint(self.height)),
+                lambda: (self.width - 1, np.random.randint(self.height)),
+                lambda: (np.random.randint(self.width), 0),
+                lambda: (np.random.randint(self.width), self.height - 1),
             ]
             target = random.choice(edges)()
         else:
@@ -327,9 +327,11 @@ class WorldGen:
 
             for dx, dy in directions:
                 nx, ny = x + dx, y + dy
-                if 0 <= nx < self.size_x and 0 <= ny < self.size_y:
+                if 0 <= nx < self.width and 0 <= ny < self.height:
                     current_height = self.topology[y, x]
                     neighbor_height = self.topology[ny, nx]
+                    current_height = self.tile_heights_map[y, x]
+                    neighbor_height = self.tile_heights_map[ny, nx]
                     slope = (current_height - neighbor_height) / max(1, np.hypot(dx, dy))
                     if slope >= 0 and slope <= max_slope:
                         neighbors.append((nx, ny, slope))
@@ -339,9 +341,11 @@ class WorldGen:
                 fallback = []
                 for dx, dy in directions:
                     nx, ny = x + dx, y + dy
-                    if 0 <= nx < self.size_x and 0 <= ny < self.size_y:
+                    if 0 <= nx < self.width and 0 <= ny < self.height:
                         current_height = self.topology[y, x]
                         neighbor_height = self.topology[ny, nx]
+                        current_height = self.tile_heights_map[y, x]
+                        neighbor_height = self.tile_heights_map[ny, nx]
                         slope = (current_height - neighbor_height) / max(1, np.hypot(dx, dy))
                         if slope <= max_slope:  # small uphill allowed
                             fallback.append((nx, ny, slope))
@@ -397,7 +401,7 @@ class WorldGen:
 
 
         # Thresholds relative to map size
-        total_tiles = self.size_x * self.size_y
+        total_tiles = self.width * self.height
         pond_thresh = 0.005 * total_tiles
         lake_thresh = 0.010 * total_tiles
 
@@ -407,7 +411,7 @@ class WorldGen:
 
             # Check if touches map edge → Ocean
             touches_edge = any(
-                x == 0 or y == 0 or x == self.size_x - 1 or y == self.size_y - 1
+                x == 0 or y == 0 or x == self.width - 1 or y == self.height - 1
                 for y, x in coords
             )
 
@@ -437,7 +441,7 @@ class WorldGen:
 
         # Find all grassland tiles
         grassland_coords = [
-            (x, y) for y in range(self.size_y) for x in range(self.size_x)
+            (x, y) for y in range(self.height) for x in range(self.width)
             if self.get_tile(x, y).terrain.name == "grassland"
         ]
         total_grassland = len(grassland_coords)
@@ -463,7 +467,7 @@ class WorldGen:
                 neighbors = [
                     (nx, ny) for nx, ny in
                     [(x+1,y), (x-1,y), (x,y+1), (x,y-1)]
-                    if 0 <= nx < self.size_x and 0 <= ny < self.size_y
+                    if 0 <= nx < self.width and 0 <= ny < self.height
                 ]
                 for nx, ny in neighbors:
                     tile = self.get_tile(nx, ny)
@@ -492,8 +496,8 @@ class WorldGen:
             world_x = x / self.config.TILE_SUBDIVISIONS
             world_y = y / self.config.TILE_SUBDIVISIONS
 
-            assert 0 <= world_x < self.size_x
-            assert 0 <= world_y < self.size_y
+            assert 0 <= world_x < self.width
+            assert 0 <= world_y < self.height
 
             tile = self.get_tile(int(world_x), int(world_y))
 
