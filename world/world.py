@@ -25,20 +25,20 @@ class World:
         self.obstacle: np.ndarray[np.bool_] | None = None
 
     @property
-    def size_x(self)->int:
-        return self.gen.config.SIZE_X
+    def width(self)->int:
+        return self.gen.config.WIDTH
 
     @property
-    def size_y(self)->int:
-        return self.gen.config.SIZE_Y
+    def height(self)->int:
+        return self.gen.config.HEIGHT
 
     @property
-    def topo_size_x(self)->int:
-        return self.gen.config.SIZE_X * self.gen.config.TILE_SUBDIVISIONS
+    def topo_width(self)->int:
+        return self.gen.config.WIDTH * self.gen.config.TILE_SUBDIVISIONS
 
     @property
-    def topo_size_y(self)->int:
-        return self.gen.config.SIZE_Y * self.gen.config.TILE_SUBDIVISIONS
+    def topo_height(self)->int:
+        return self.gen.config.HEIGHT * self.gen.config.TILE_SUBDIVISIONS
 
     @property
     def scale(self)->float:

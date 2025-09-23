@@ -203,4 +203,6 @@ class CameraIso:
                 tile_points = [(px, py), (px + self.config.TILE_WIDTH // 2, py + self.config.TILE_HEIGHT // 2), (px, py + self.config.TILE_HEIGHT), (px - self.config.TILE_WIDTH // 2, py + self.config.TILE_HEIGHT // 2)]
                 if selection_rect.collidepoint(tile_points[0]) or any(selection_rect.clipline(tile_points[i], tile_points[(i + 1) % 4]) for i in range(4)):
                     tiles_in_rect.add((x, y))
+
+        return sorted(tiles_in_rect, key=lambda t: (t[1], t[0]))
         return tiles_in_rect

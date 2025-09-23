@@ -42,75 +42,6 @@ cam_config = CameraIsoConfig(
     )
 camera = CameraIso(my_world, 0, 0, config=cam_config)
 
-# --- Transformation matrices ---
-
-w2s_matrix = np.array([
-    [cam_config.TILE_WIDTH / 2, cam_config.TILE_HEIGHT / 2],
-    [-cam_config.TILE_WIDTH / 2, cam_config.TILE_HEIGHT / 2]
-])
-
-s2w_matrix = np.linalg.inv(w2s_matrix)
-
-screen_offset = np.array([cam_config.SCREEN_WIDTH / 2, cam_config.SCREEN_HEIGHT / 4])
-
-def world_to_screen(x, y):
-    """
-    Transforms world coordinates (x, y) to screen coordinates.
-    x and y can be scalars or NumPy arrays.
-    """
-    world_coords = np.stack([x, y], axis=-1)
-    screen_coords = world_coords @ w2s_matrix + screen_offset
-    return screen_coords.astype(int)
-
-def screen_to_world(screen_x, screen_y):
-    """
-    Transforms screen coordinates (screen_x, screen_y) to world coordinates.
-    screen_x and screen_y can be scalars or NumPy arrays.
-    """
-    screen_coords = np.stack([screen_x, screen_y], axis=-1)
-    world_coords = (screen_coords - screen_offset) @ s2w_matrix
-    return world_coords.astype(int)
-
-def get_tiles_in_rect(selection_rect, camera_x, camera_y, world_config, cam_config):
-    """
-    Calculates the set of world grid tiles that intersect with a given screen rectangle.
-
-    This is an optimized function that first converts the screen rectangle's corners
-    to world coordinates to define a smaller search area, rather than iterating over
-    the entire world grid.
-
-    Args:
-        selection_rect (pygame.Rect): The rectangle on the screen.
-        camera_x (int): The camera's X offset in pixels.
-        camera_y (int): The camera's Y offset in pixels.
-        world_config (WorldGenConfig): The world configuration object.
-        cam_config (CameraIsoConfig): The camera configuration object.
-
-    Returns:
-        set[tuple[int, int]]: A set of (x, y) world coordinates for the intersecting tiles.
-    """
-    # 1. Convert screen rect corners to world coordinates to define a search area.
-    rect_corners_screen_x = np.array([selection_rect.left, selection_rect.right, selection_rect.right, selection_rect.left]) - camera_x
-    rect_corners_screen_y = np.array([selection_rect.top, selection_rect.top, selection_rect.bottom, selection_rect.bottom]) - camera_y
-    world_corners = screen_to_world(rect_corners_screen_x, rect_corners_screen_y)
-
-    # 2. Determine the bounding box of the search area in the world grid.
-    min_wx = max(0, int(np.min(world_corners[:, 0])) - 2)
-    max_wx = min(world_config.WIDTH, int(np.max(world_corners[:, 0])) + 2)
-    min_wy = max(0, int(np.min(world_corners[:, 1])) - 2)
-    max_wy = min(world_config.HEIGHT, int(np.max(world_corners[:, 1])) + 2)
-
-    # 3. Iterate only over tiles in the bounding box and check for intersection.
-    tiles_in_rect = set()
-    for x in range(min_wx, max_wx):
-        for y in range(min_wy, max_wy):
-            p = world_to_screen(x, y)
-            px, py = p[0] + camera_x, p[1] + camera_y
-            tile_points = [(px, py), (px + cam_config.TILE_WIDTH // 2, py + cam_config.TILE_HEIGHT // 2), (px, py + cam_config.TILE_HEIGHT), (px - cam_config.TILE_WIDTH // 2, py + cam_config.TILE_HEIGHT // 2)]
-            if selection_rect.collidepoint(tile_points[0]) or any(selection_rect.clipline(tile_points[i], tile_points[(i + 1) % 4]) for i in range(4)):
-                tiles_in_rect.add((x, y))
-    return tiles_in_rect
-
 # ---- Initialize pygame ----
 pygame.init()
 window_size = (cam_config.SCREEN_WIDTH, cam_config.SCREEN_HEIGHT)
@@ -163,13 +94,11 @@ while running_game:
     tile_height = cam_config.TILE_HEIGHT
     blue_color = (0, 0, 255)
 
-    if True: # Draw full grid for testing
+    if False: # Draw full grid for testing
         for x in range(grid_width):
             for y in range(world_config.HEIGHT):
-                p = world_to_screen(x, y)
+                p = camera.world_to_screen(x, y)
                 px, py = p[0],p[1]
-                px += camera.x
-                py += camera.y
 
                 # Define the four corners of the isometric tile
                 points = [
@@ -181,10 +110,9 @@ while running_game:
                 pygame.draw.polygon(screen, blue_color, points, 1) # Draw outline for others
 
     for (x, y) in tiles_in_rect:
-        p = world_to_screen(x, y)
+        p = camera.world_to_screen(x, y)
         px, py = p[0],p[1]
-        px += camera.x
-        py += camera.y
+
 
         # Define the four corners of the isometric tile
         points = [

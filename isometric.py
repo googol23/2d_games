@@ -21,16 +21,16 @@ for name, log_obj in logging.root.manager.loggerDict.items():
 
 # World configuration
 # --- Initialize world ---
-world_config = WorldGenConfig(  SIZE_X= 10,
-                                SIZE_Y= 10,
+world_config = WorldGenConfig(  WIDTH = 50,
+                                HEIGHT= 50,
                                 SCALE = 10,
                                 TILE_SUBDIVISIONS=2,
                                 WATER_RATIO=0.15,
                                 MOUNTAIN_RATIO=0.15,
                                 ICE_CAP_RATIO=0.01
                               )
-world_gentor = WorldGen(config=world_config)
-my_world = World(world_gentor)
+world_gen = WorldGen(config=world_config)
+my_world = World(world_gen)
 
 # Camera configuration
 cam_config = CameraIsoConfig(
@@ -38,8 +38,8 @@ cam_config = CameraIsoConfig(
         speed_tiles = 20,
         screen_with = 1600,
         screen_height = 900,
-        tile_width = 256,
-        tile_height = 128
+        tile_width = 128,
+        tile_height = 64
     )
 camera = CameraIso(my_world, 0, 0, config=cam_config)
 
@@ -220,16 +220,16 @@ class Human:
 
 # --- Initialize character ---
 character = Human(character_dir,
-                  start_pos=(my_world.size_x // 2, my_world.size_y // 2),
+                  start_pos=(my_world.width // 2, my_world.height // 2),
                   frame_delay=0.01, # TODO this needs tunning
                   size=(camera.tile_width_pxl,camera.tile_width_pxl))
 
 # --- Generate world ---
 my_world.generate()
-print(my_world.tiles.shape)
 
 # ---- Compute positions and configure Sprites ----
 # Tiles
+layer_counter = 0
 tile_sprites = pygame.sprite.LayeredUpdates()
 for (x, y), tile in np.ndenumerate(my_world.tiles):
     # Isometric coordinates
@@ -245,8 +245,10 @@ for (x, y), tile in np.ndenumerate(my_world.tiles):
     # Configure Tile Sprite
     tile.image = img
     tile.rect = img.get_rect(center=(i, j))
+    tile.layer = layer_counter
 
     tile_sprites.add(tile)
+    layer_counter += 1
 
 # Trees
 tree_sprites = pygame.sprite.LayeredUpdates()
@@ -287,38 +289,52 @@ while running_game:
 
     keys = pygame.key.get_pressed()
 
-    # Camera movement
-    camera.control(dt,keys=keys)
+    camera.control(dt, keys=keys)
+
+    if keys[pygame.K_q]:
+        running_game = False
 
     screen.fill(BG_COLOR)
 
-    for y in range(my_world.tiles.shape[1]):
-        for x in range(my_world.tiles.shape[0]):
-            tile = my_world.tiles[x, y]
-            tile = my_world.get_tile(x, y)
-            px, py = camera.world_to_screen(x, y)
-            py += tile.is_water * camera.tile_height_pxl // 2
-            px -= camera.tile_width_pxl // 2
-            py -= camera.tile_height_pxl // 2
-            tile.rect.x = px
-            tile.rect.y = py
+    # --- Find tiles inside the red rectangle ---
+    rect_width, rect_height = cam_config.SCREEN_WIDTH, cam_config.SCREEN_HEIGHT
+    rect_x = (window_size[0] - rect_width) // 2
+    rect_y = (window_size[1] - rect_height) // 2
+    red_rect = pygame.Rect(rect_x, rect_y, rect_width, rect_height)
 
-            # screen.blit(tile.image, (px, py))
-            # # Draw world coordinate text in the middle of the tile
-            # coord_text = font.render(f"({x},{y})", True, (0,0,0))
-            # text_rect = coord_text.get_rect(center=(px + camera.tile_width_pxl//2, py + camera.tile_height_pxl//2))
-            # screen.blit(coord_text, text_rect)
-    tile_sprites.draw(screen)
 
-    for (y, x), obj in np.ndenumerate(my_world.elements):
-        if obj is None:
-            continue
-        screen_x, screen_y = camera.world_to_screen(obj.x, obj.y)
-        obj.rect.midbottom = (screen_x, screen_y)
-    tree_sprites.draw(screen)
+    tiles_in_rect = camera.get_tiles_in_rect(red_rect)
+    print(f"Tiles in rect: {len(tiles_in_rect)}\n")
 
-    ball_pos = camera.world_to_screen(5, 5)
-    pygame.draw.circle(screen, (255, 0, 0), ball_pos, 20)
+
+    # for y in range(my_world.tiles.shape[1]):
+    #     for x in range(my_world.tiles.shape[0]):
+    for (x,y) in tiles_in_rect:
+        tile = my_world.get_tile(x,y)
+        px, py = camera.world_to_screen(x, y)
+        # py += tile.is_water * camera.tile_height_pxl // 2
+        # px -= camera.tile_width_pxl // 2
+        # py -= camera.tile_height_pxl // 2
+        tile.rect.x = px
+        tile.rect.y = py
+
+        screen.blit(tile.image, (px, py))
+        # Draw world coordinate text in the middle of the tile
+        # coord_text = font.render(f"({x},{y})", True, (0,0,0))
+        # text_rect = coord_text.get_rect(center=(px + camera.tile_width_pxl//2, py + camera.tile_height_pxl//2))
+        # screen.blit(coord_text, text_rect)
+
+    # tile_sprites.draw(screen)
+
+    # for (y, x), obj in np.ndenumerate(my_world.elements):
+    #     if obj is None:
+    #         continue
+    #     screen_x, screen_y = camera.world_to_screen(obj.x, obj.y)
+    #     obj.rect.midbottom = (screen_x, screen_y)
+    # tree_sprites.draw(screen)
+
+    # ball_pos = camera.world_to_screen(5, 5)
+    # pygame.draw.circle(screen, (255, 0, 0), ball_pos, 20)
 
     # camera.FPS counter
     fps_text = pygame.font.SysFont(None, 24).render(f"FPS: {int(clock.get_fps())}", True, (255, 255, 255))
